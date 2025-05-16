@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { motion } from "framer-motion";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { CustomizerOptions } from "@/components/customizer/CustomizerOptions";
-import { CustomizerPreviewEnhanced } from "@/components/customizer/CustomizerPreviewEnhanced";
+import { Customizer3D } from "@/components/customizer/Customizer3D";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Customizer() {
