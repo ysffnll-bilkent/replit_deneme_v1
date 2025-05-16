@@ -78,7 +78,7 @@ export default function Customizer() {
             <div className="flex flex-col lg:flex-row gap-8">
               {/* Preview Section */}
               <div className="w-full lg:w-1/2">
-                <CustomizerPreviewEnhanced
+                <Customizer3D
                   selectedItemType={selectedItemType}
                   selectedCrystal={selectedCrystal}
                   selectedMaterial={selectedMaterial}
