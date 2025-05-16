@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet";
 import { motion } from "framer-motion";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { CustomizerOptions } from "@/components/customizer/CustomizerOptions";
-import { CustomizerPreview } from "@/components/customizer/CustomizerPreview";
+import { CustomizerPreview3D } from "@/components/customizer/CustomizerPreview3D";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Customizer() {
@@ -78,11 +78,12 @@ export default function Customizer() {
             <div className="flex flex-col lg:flex-row gap-8">
               {/* Preview Section */}
               <div className="w-full lg:w-1/2">
-                <CustomizerPreview
+                <CustomizerPreview3D
                   selectedItemType={selectedItemType}
                   selectedCrystal={selectedCrystal}
                   selectedMaterial={selectedMaterial}
                   selectedLength={selectedLength}
+                  setSelectedCrystal={setSelectedCrystal}
                 />
               </div>
               

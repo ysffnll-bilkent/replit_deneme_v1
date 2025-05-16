@@ -2,7 +2,7 @@ import { Suspense, useRef, useState, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, useGLTF, Environment, useTexture, PerspectiveCamera } from "@react-three/drei";
 import * as THREE from "three";
-import { motion } from "framer-motion-3d";
+import { motion } from "framer-motion";
 
 // Define types for our stone data
 interface Stone {
@@ -225,10 +225,10 @@ const StonePlacer = ({
   return (
     <>
       {/* Visible curve guide */}
-      <line>
-        <bufferGeometry attach="geometry" {...curveToGeometry(curve, 50)} />
-        <lineBasicMaterial attach="material" color="#cccccc" opacity={0.5} transparent />
-      </line>
+      <primitive object={new THREE.LineSegments(
+        curveToGeometry(curve, 50),
+        new THREE.LineBasicMaterial({ color: "#cccccc", opacity: 0.5, transparent: true })
+      )} />
       
       {/* Draggable stone */}
       <mesh
@@ -272,15 +272,18 @@ const curveToGeometry = (curve: THREE.Curve<THREE.Vector3>, segments: number) =>
     positions[i * 3 + 2] = points[i].z;
   }
   
-  return {
-    setAttribute: {
-      position: new THREE.BufferAttribute(positions, 3)
-    },
-    setIndex: {
-      array: Array.from({ length: points.length - 1 }, (_, i) => [i, i + 1]).flat(),
-      itemSize: 1
-    }
-  };
+  // Create indices for line segments
+  const indices = new Uint16Array((points.length - 1) * 2);
+  for (let i = 0; i < points.length - 1; i++) {
+    indices[i * 2] = i;
+    indices[i * 2 + 1] = i + 1;
+  }
+  
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  
+  return geometry;
 };
 
 // StoneSelector component for the left panel
