@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { Gem, Heart, User, Menu, X } from "lucide-react";
+import { Gem, Heart, User, Menu, X, Instagram } from "lucide-react";
 
 export const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -14,6 +14,7 @@ export const Header = () => {
     { href: "/customizer", label: "Customizer" },
     { href: "/blog", label: "Blog" },
     { href: "/etsy-redirect", label: "Etsy" },
+    { href: "/instagram-redirect", label: "Instagram" },
   ];
 
   const toggleMobileMenu = () => {
@@ -26,7 +27,7 @@ export const Header = () => {
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2">
             <Gem className="text-lavender text-2xl" />
-            <span className="font-serif text-xl font-semibold">Crystal Essence</span>
+            <span className="font-serif text-xl font-semibold">Mine Jewellery Art</span>
           </Link>
           
           {/* Desktop Navigation */}

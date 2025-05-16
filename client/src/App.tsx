@@ -17,6 +17,7 @@ import Customizer from "@/pages/customizer";
 import BlogList from "@/pages/blog/index";
 import BlogPost from "@/pages/blog/[slug]";
 import EtsyRedirect from "@/pages/etsy-redirect";
+import InstagramRedirect from "@/pages/instagram-redirect";
 import Profile from "@/pages/profile";
 
 function Router() {
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/blog" component={BlogList} />
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/etsy-redirect" component={EtsyRedirect} />
+      <Route path="/instagram-redirect" component={InstagramRedirect} />
       <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
