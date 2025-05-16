@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { motion } from "framer-motion";
 import { SectionHeader } from "@/components/shared/SectionHeader";
-import { CustomizerOptions } from "@/components/customizer/CustomizerOptions";
-import { Customizer3D } from "@/components/customizer/Customizer3D";
+import { EnhancedCustomizer } from "@/components/customizer/EnhancedCustomizer";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Customizer() {
@@ -76,27 +75,16 @@ export default function Customizer() {
             transition={{ duration: 0.5 }}
           >
             <div className="flex flex-col lg:flex-row gap-8">
-              {/* Preview Section */}
-              <div className="w-full lg:w-1/2">
-                <Customizer3D
+              {/* Full-width Crystal Customizer */}
+              <div className="w-full">
+                <EnhancedCustomizer
                   selectedItemType={selectedItemType}
                   selectedCrystal={selectedCrystal}
                   selectedMaterial={selectedMaterial}
                   selectedLength={selectedLength}
-                  setSelectedCrystal={setSelectedCrystal}
-                />
-              </div>
-              
-              {/* Customization Options */}
-              <div className="w-full lg:w-1/2">
-                <CustomizerOptions
-                  selectedItemType={selectedItemType}
                   setSelectedItemType={setSelectedItemType}
-                  selectedCrystal={selectedCrystal}
                   setSelectedCrystal={setSelectedCrystal}
-                  selectedMaterial={selectedMaterial}
                   setSelectedMaterial={setSelectedMaterial}
-                  selectedLength={selectedLength}
                   setSelectedLength={setSelectedLength}
                 />
               </div>

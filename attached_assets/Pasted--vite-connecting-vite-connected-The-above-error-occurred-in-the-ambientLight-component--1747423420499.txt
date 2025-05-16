@@ -1,0 +1,29 @@
+[vite] connecting...
+[vite] connected.
+The above error occurred in the <ambientLight> component:
+
+    at ambientLight
+    at Suspense
+    at ErrorBoundary (https://5c56a653-a0e8-4949-812d-0190e0dcc5fb-00-29g14nd28omkl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DNAPUBNM.js?v=891e9135:16482:5)
+    at FiberProvider (https://5c56a653-a0e8-4949-812d-0190e0dcc5fb-00-29g14nd28omkl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DNAPUBNM.js?v=891e9135:18034:21)
+    at Provider (https://5c56a653-a0e8-4949-812d-0190e0dcc5fb-00-29g14nd28omkl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DNAPUBNM.js?v=891e9135:17725:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+The above error occurred in the <directionalLight> component:
+
+    at directionalLight
+    at Suspense
+    at ErrorBoundary (https://5c56a653-a0e8-4949-812d-0190e0dcc5fb-00-29g14nd28omkl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DNAPUBNM.js?v=891e9135:16482:5)
+    at FiberProvider (https://5c56a653-a0e8-4949-812d-0190e0dcc5fb-00-29g14nd28omkl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DNAPUBNM.js?v=891e9135:18034:21)
+    at Provider (https://5c56a653-a0e8-4949-812d-0190e0dcc5fb-00-29g14nd28omkl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DNAPUBNM.js?v=891e9135:17725:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
+The above error occurred in the <spotLight> component:
+
+    at spotLight
+    at Suspense
+    at ErrorBoundary (https://5c56a653-a0e8-4949-812d-0190e0dcc5fb-00-29g14nd28omkl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DNAPUBNM.js?v=891e9135:16482:5)
+    at FiberProvider (https://5c56a653-a0e8-4949-812d-0190e0dcc5fb-00-29g14nd28omkl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DNAPUBNM.js?v=891e9135:18034:21)
+    at Provider (https://5c56a653-a0e8-4949-812d-0190e0dcc5fb-00-29g14nd28omkl.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-DNAPUBNM.js?v=891e9135:17725:3)
+
+React will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary.
