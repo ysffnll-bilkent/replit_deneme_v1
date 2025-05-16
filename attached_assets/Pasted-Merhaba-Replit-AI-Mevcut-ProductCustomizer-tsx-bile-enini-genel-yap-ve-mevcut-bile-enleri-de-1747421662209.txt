@@ -1,0 +1,66 @@
+Merhaba Replit AI,
+
+Mevcut `ProductCustomizer.tsx` bileşenini, genel yapı ve mevcut bileşenleri değiştirmeden yalnızca taş tasarım alanını modern, interaktif ve tamamen 3D sürükle-bırak destekli bir arayüze dönüştürmeni istiyorum. Bu işlemi gerçekleştirirken aşağıdaki detayları birebir takip et:
+
+### Genel Amaç:
+
+Mevcut taş dizme alanını kaldırıp yerine React Three Fiber ve Drei kullanarak, masaüstü ve mobil cihazlarda sorunsuz çalışacak, kullanıcıların gerçekçi 3D taş modellerini sol taraftaki panelden sürükleyerek sağdaki 3D takı (bileklik, kolye, halhal) üzerine bırakabileceği bir sistem kur.
+
+### Kullanılacak Teknolojiler:
+
+* React Three Fiber (Canvas)
+* Drei (useGLTF, OrbitControls, Environment)
+* GLB formatındaki 3D modeller
+
+### Canvas Kurulumu:
+
+* Mevcut bileşenin yapısını koru, sadece özelleştirme alanına bir Canvas yerleştir.
+* Canvas içinde `<ambientLight>` ve `<directionalLight>` ile sade ve hoş bir aydınlatma oluştur.
+* `<OrbitControls>` ekleyerek takının 3D olarak döndürülebilmesini ve yakınlaştırılmasını sağla (`enablePan={false}`).
+* `<Suspense>` ve Drei’nin `useGLTF.preload` ile model yüklenirken kullanıcıya bir spinner veya yükleniyor göstergesi sun.
+
+### Takı Modelleri:
+
+* Takı modellerini (bileklik, kolye, halhal) `/models/bracelet.glb` gibi dosya yollarıyla yükle.
+* Sahneye yüklerken `<primitive object={gltf.scene} />` şeklinde ekle ve uygun ölçekte göster.
+
+### Sol Tarafta 3D Taş Listesi:
+
+* Kullanıcının seçebileceği taşlar: Amethyst, Citrine, Rose Quartz, Lapis Lazuli, Obsidian, Clear Quartz, Tiger’s Eye, Moonstone, Turquoise, Onyx (toplam 10 taş).
+* Taşları küçük thumbnail olarak sol tarafta dikey listele, her biri küçük, döndürülebilir bir 3D model olsun.
+* Bu taşlar sol panelde sabit dursun, kamera hareket ettiğinde konumları değişmesin (kamera HUD yöntemi).
+* Kullanıcı sol paneldeki taşlara tıklayıp sürüklemeye başladığında, taşın bir kopyası oluşturulup ana sahnede sürüklenebilir hale gelsin.
+
+### 3D Sürükle-Bırak Etkileşimi:
+
+* Kullanıcı taşı sürüklerken, taş kullanıcı imlecini takip etsin ve takıya yaklaştığında otomatik olarak görünmez eğri üzerine hizalansın ("snap" etkisi).
+* Kullanıcı taşı bıraktığında, taş görünmez eğri üzerine net biçimde kilitlensin ve düzgün hizalansın (taş eğrinin teğetine göre oryante edilsin).
+* Eğer taşlar çok yakın yerleştirildiyse, çakışmayı önlemek için taşlar hafifçe ileri-geri kaydırılarak "sıkıştırılsın".
+
+### Görünmez Eğri (Curve) Sistemi:
+
+* Takının taş dizilecek kısmını Three.js `CatmullRomCurve3` ile tanımla. (örneğin bileklik için dairesel eğri)
+* Eğrinin üzerinde görünmez bir TubeGeometry oluştur ve raycaster ile taşların konumlandırılmasında kullan.
+
+### Mobil ve Dokunmatik Desteği:
+
+* Taşları ve sahneyi hem fare hem de dokunmatik ekranla yönetilebilir yap (pointer event destekli).
+
+### Ekstra Görsel Efektler:
+
+* Taş yerine yerleştirildiğinde kısa bir parlama veya büyüme animasyonu ekle (görsel geri bildirim).
+* Taş kapasitesi dolduğunda kullanıcıya uyarı ver (“Bracelet is full” gibi bir mesaj veya animasyon).
+
+### Kod ve Yapı:
+
+* Mevcut state yönetim mantığını koru, taşların yerleştirme durumunu state ile takip et.
+* Taş kaldırma ve değiştirme işlemlerini basit tut; yerleştirilen taşlar çıkarılabilir veya yerleri değiştirilebilir opsiyonunu ekleyebilirsin.
+
+### Sonuç:
+
+* Mevcut bileşenin tasarımını bozmadan, yalnızca taş yerleştirme alanını modern ve kullanıcı dostu bir 3D tasarıma yükselt.
+* React Three Fiber ve Drei’nin tüm avantajlarını kullanarak profesyonel, kullanıcı deneyimini zenginleştiren bir sistem oluştur.
+
+Tüm bu adımları gerçekleştir ve kodlamayı tek bir `ProductCustomizer.tsx` dosyasında derli toplu tutarak, diğer bileşenlere dokunmadan, mevcut sayfa düzenini koruyarak tamamla.
+
+Başarılar Replit AI, işin bitene kadar adım adım devam et.

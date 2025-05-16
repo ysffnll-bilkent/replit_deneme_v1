@@ -39,7 +39,7 @@ export const CrystalCard = ({ crystal }: CrystalCardProps) => {
       transition={{ duration: 0.2 }}
     >
       <Link href={`/encyclopedia/${crystal.slug}`}>
-        <a className="block">
+        <div className="block cursor-pointer">
           <img 
             src={crystal.image} 
             alt={crystal.name} 
@@ -61,7 +61,7 @@ export const CrystalCard = ({ crystal }: CrystalCardProps) => {
               </button>
             </div>
           </div>
-        </a>
+        </div>
       </Link>
     </motion.div>
   );
