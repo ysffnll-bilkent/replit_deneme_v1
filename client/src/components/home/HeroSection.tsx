@@ -23,22 +23,22 @@ export const HeroSection = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/encyclopedia">
-              <motion.a 
-                className="px-8 py-3 bg-lavender hover:bg-lavender/90 text-white rounded-full transition-colors shadow-md font-medium inline-block"
+              <motion.div 
+                className="px-8 py-3 bg-lavender hover:bg-lavender/90 text-white rounded-full transition-colors shadow-md font-medium inline-block cursor-pointer"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 Explore Crystals
-              </motion.a>
+              </motion.div>
             </Link>
             <Link href="/tests">
-              <motion.a 
-                className="px-8 py-3 border-2 border-lavender text-lavender hover:bg-lavender hover:text-white rounded-full transition-colors font-medium inline-block"
+              <motion.div 
+                className="px-8 py-3 border-2 border-lavender text-lavender hover:bg-lavender hover:text-white rounded-full transition-colors font-medium inline-block cursor-pointer"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 Take a Test
-              </motion.a>
+              </motion.div>
             </Link>
           </div>
         </motion.div>

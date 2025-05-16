@@ -1,0 +1,195 @@
+Harika kanka, şimdi Replit AI’ın doğrudan anlayabileceği şekilde, sadece mevcut `ProductCustomizer` sayfasının taş tasarım alanını bozmadan modern ve interaktif bir 3D sürükle-bırak sistemine dönüştürmesini isteyen detaylı bir prompt hazırlıyorum. Hemen başlıyorum, birazdan döneceğim.
+
+
+# ProductCustomizer Bileşeninde 3D Sürükle-Bırak Arayüz Tasarımı
+
+## Genel Yaklaşım ve Amaç
+
+**ProductCustomizer.tsx** bileşeninin taş yerleştirme alanını, modern ve etkileşimli bir **3D sürükle-bırak (drag-and-drop)** arayüzü olarak yeniden inşa edeceğiz. Bu değişiklikler sadece özelleştirme (tasarım) alanına odaklanacak; sayfanın genel düzeni, diğer bileşenler, header/footer gibi kısımlar korunacaktır. Yeni tasarımda kullanıcı, sol taraftaki taş listesinden bir **doğal taş modelini** alıp sağ taraftaki **3D takı modeli** üzerine sürükleyerek yerleştirebilecek. Masaüstü ve mobil cihazlarda sorunsuz çalışan, etkileşimli bir 3D deneyim hedeflenmektedir.
+
+## 3D Ortamının Kurulumu (React Three Fiber Canvas)
+
+Öncelikle, ProductCustomizer bileşenine bir React Three Fiber **Canvas** öğesi ekleyerek 3D sahneyi oluşturuyoruz. Bu Canvas, mevcut 2D taş gösterimlerinin yerini alacak şekilde, sayfadaki özelleştirme alanını kaplayacaktır. Canvas'ı eklerken diğer arayüz bileşenlerinin konumlarını bozmayacak bir şekilde (örneğin, ilgili div konteyneri içinde) yerleştiriyoruz.
+
+Canvas içinde 3D içerik yüklerken React'ın `<Suspense>` bileşeni kullanılarak bir **yükleme durumu** yönetimi sağlanabilir. Örneğin, model yüklemeleri gerçekleşirken kullanıcıya bir spinner veya ilerleme çubuğu gösterilebilir. React Three Fiber, Drei kütüphanesinin `useProgress` hook'u ile model yükleme yüzdesini alıp basit bir loader göstergesi yapmaya imkân tanır. Tüm modellerin önceden yüklenmesi için `useGLTF.preload(...)` fonksiyonu kullanılabilir. Bu sayede sahne oluşturulurken GLB dosyaları önceden getirilip parse edilir ve bileşen kullanıldığında hazır olur.
+
+**3D model yükleme:** Takı modeli (bileklik, kolye veya halhal) ve taş modelleri `.glb` formatında olacaktır. Drei kütüphanesinden `useGLTF` hook'unu kullanarak bu modelleri Canvas içinde yükleyebiliriz. Örneğin:
+
+```jsx
+const jewelryGltf = useGLTF('/models/bracelet.glb');
+const stones = stoneList.map(stone => useGLTF(stone.modelUrl));
+```
+
+Eğer GLB modellerini React bileşenlerine dönüştürmek istersek, pmndrs ekosisteminin **gltfjsx** aracı kullanılabilir; ancak burada doğrudan `useGLTF` ile yükleyip `<primitive object={gltf.scene} />` şeklinde sahneye eklemek yeterlidir. Yüklenen model bir grup (`<group>`) veya mesh topluluğu olarak gelecektir, bunu uygun şekilde ölçekleyip konumlandırabiliriz.
+
+**Aydınlatma ve çevre:** 3D sahnede modellerin doğru görünmesi için ışık eklemek gereklidir. Örneğin, yumuşak bir genel aydınlatma için `<ambientLight intensity={0.5} />` ve sahneyi aydınlatmak için belirli bir yönden ışık veren `<directionalLight position={[...]} intensity={1} />` kullanılabilir. İsteğe bağlı olarak Drei kütüphanesinden `<Environment preset="sunset" />` gibi bir HDRI ortam ışığı eklenerek daha gerçekçi bir aydınlatma sağlanabilir. Bu değişiklikler sadece görselliği etkiler, sayfanın diğer kısımlarına zarar vermez.
+
+**Kamera ve kontrolcü kurulumu:** Canvas oluşturulurken varsayılan kamera kullanılabilir veya özel bir kamera tanımlanabilir. Takıyı uygun açıdan göstermek için örneğin `camera={{ position: [0, 0, 5], fov: 45 }}` gibi bir konum verilerek Canvas başlatılabilir. Kullanıcının sahneyi döndürüp yakınlaştırabilmesi için Drei kütüphanesinden `<OrbitControls />` bileşeni entegre edilecektir. `<OrbitControls />` kameraya orbit (yörünge etrafında dönme) kontrolü ekleyerek fare sürüklemesi veya dokunmatik hareket ile modeli incelemeyi mümkün kılar. Bu kontrol bileşeni varsayılan olarak döndürme, kaydırma (pan) ve yakınlaştırmayı etkin kılar. İhtiyaca göre bazı eksenler kısıtlanabilir veya kaydırma devre dışı bırakılabilir (örneğin, takının merkezden kaymaması için `enablePan={false}` ayarlanabilir). Drei'nin OrbitControls'ünde `enableDamping` özelliği varsayılan olarak `true` olduğundan, kullanıcı fareyi bıraktığında dönüş hareketi yavaşça duracaktır. Bu, kullanıcı deneyimini daha akıcı hale getirir.
+
+OrbitControls'ü Canvas içerisine eklerken genellikle şöyle kullanırız:
+
+```jsx
+<Canvas camera={{ position: [0, 0, 5] }}>
+  <Suspense fallback={<LoadingSpinner />}>
+    {/* Işıklar ve modeller */}
+    <ambientLight intensity={0.5} />
+    <directionalLight position={[10, 10, 5]} intensity={1} />
+    <primitive object={jewelryGltf.scene} />  {/* Takı modeli */}
+    {/** ...Taş listesi ve diğer öğeler... **/}
+  </Suspense>
+  <OrbitControls />
+</Canvas>
+```
+
+Bu noktada, takı modeli sahnede yüklü ve kullanıcı kontrolü için temel 3D ortam hazır olacaktır.
+
+## Sol Tarafta 3D Taş Listesi Oluşturma
+
+Kullanıcıya sunulan **10 adet doğal taş** (Amethyst, Citrine, Rose Quartz, Lapis Lazuli, Obsidian, Clear Quartz, Tiger’s Eye, Moonstone, Turquoise, Onyx) sol tarafta küçük önizlemeler şeklinde listelenecektir. Bu taşların her biri için küçük 3D görseller kullanacağız. Her taş, düşük boyutlu bir GLB modeli olarak yüklenecek ve liste içinde birer küçük **thumbnail** (küçük önizleme) gibi görünecek şekilde gösterilecek. Taşların 3D olarak sunulması, kullanıcıya gerçekçi bir önizleme sağlar.
+
+**Taş modellerini yükleme:** Taşların modellerini de `useGLTF` ile önceden yükleyebiliriz (veya sayfa yüklendiğinde `useGLTF.preload` ile önceden hazırlayabiliriz). Örneğin, taş listemizi bir dizi nesne olarak tanımlayalım:
+
+```js
+const availableStones = [
+  { name: 'Amethyst', modelUrl: '/stones/amethyst.glb' },
+  { name: 'Citrine', modelUrl: '/stones/citrine.glb' },
+  // ... diğer taşlar
+];
+```
+
+Bu liste üzerinden taş modellerini useGLTF ile sırayla yükleyebiliriz. Her taş için küçük bir `<mesh>` veya `<group>` oluşturarak içinde taş modelinin geometry ve material'ını barındırabiliriz. Modellemenin kolay yolu, GLB'yi yükledikten sonra `<primitive object={stoneGltf.scene} />` kullanmaktır (GLB sahnesini doğrudan React elemanı olarak ekler). Küçük önizleme olması için bu objeleri uygun ölçekle (`scale={0.3}` gibi) küçültürüz.
+
+**Taş listesi düzeni:** Sol tarafta bu taşları dikey bir liste halinde yerleştireceğiz. Bunu yapmanın birden fazla yolu var:
+
+* **HTML/CSS Yöntemi:** Her taş için ayrı bir küçük `<canvas>` kullanıp, CSS ile sol tarafa yerleştirmek. Her canvas içinde ilgili taş modeli döndürülebilir veya sabit açıyla görünebilir. Bu yöntem, drag-and-drop işlemini klasik HTML5 drag event'leri ile yönetmeyi gerektirebilir.
+* **3D HUD Yöntemi (Tercih edilen):** Taşları ana 3D sahnenin içinde, ancak kullanıcı etkileşimi açısından sabit bir panel olarak yerleştirmek. Bunu, Three.js'de kamera tabanlı bir HUD (Heads-Up Display) tekniği ile yapabiliriz. Kamerayı alıp alt öğesi (child) olarak bir taş listesi grubu eklersek, kamera hareket etse bile bu grup kamera ile birlikte hareket edeceği için ekranda sabit bir panel gibi görünecektir. Örneğin, R3F içinde `const { camera } = useThree(); useEffect(() => camera.add(stoneListGroup), [])` şeklinde, içinde taş önizleme mesh'leri olan bir grup objesini kameraya ekleyebiliriz. Bu grup konum olarak kameranın biraz solunda ve önünde olacak şekilde ayarlanır (örneğin `stoneListGroup.position.set(-2, 0, -4)` diyerek kamera ekseninde sola ve biraz ileriye yerleştirilebilir). Bu sayede kullanıcı OrbitControls ile sahneyi döndürdüğünde taş listesi hep sol üstte sabit kalır (tıpkı 2D arayüzün parçasıymış gibi). Kamera ile birlikte hareket ettikleri için ekranda konumları değişmez.
+
+HUD yöntemi kullanırken, her taşın **mesh** veya **group** olarak bir `onPointerDown` olayına sahip olması gerekir ki kullanıcı tıklayıp sürüklemeye başlayabilsin. Taşları listelerken React içinde şu şekilde yapabiliriz:
+
+```jsx
+<group ref={stoneListGroup} position={[-2, 0, -4]} /* camera'ya eklenecek grup */>
+  {availableStones.map((stone, idx) => (
+    <mesh key={stone.name} 
+          position={[0, idx * -0.5, 0]}  // dikeyde aralıkla sıralama
+          scale={[0.3, 0.3, 0.3]}
+          onPointerDown={(e) => startDraggingStone(stone)}>
+      <primitive object={stone.gltf.scene} />
+    </mesh>
+  ))}
+</group>
+```
+
+Yukarıda her taş modeline ait primitive, bir mesh içine sarıldı ve onPointerDown olayları tanımlandı. Bu sayede kullanıcı bir taşın üzerine tıkladığında sürükleme işlemini başlatabiliriz. (Not: Yukarıda `startDraggingStone` adında bir işlev kullanıldı; bu, seçilen taşın sürükleme için kopyalanmasını ve state'in güncellenmesini yönetecek, aşağıda açıklanacak.)
+
+## Taş Sürükle-Bırak Etkileşiminin Uygulanması
+
+**1. Sürükleme Başlatma:** Kullanıcı, sol paneldeki taşlardan birine tıkladığında (`onPointerDown` tetiklenir) sürükleme süreci başlar. Bu noktada yapılacaklar:
+
+* **Taş Modelini Kopyalama:** Taş listesinde görünen modeli doğrudan sürüklemek yerine, onun bir kopyasını sahneye eklemek daha uygundur. Böylece sol taraftaki taş listesi olduğu gibi kalır (taş kaybolmaz) ve kullanıcı sahne içinde bağımsız bir taşı hareket ettirir. Örneğin, `startDraggingStone(stone)` fonksiyonu içinde `const newStone = stone.gltf.scene.clone()` ile modelin bir klonu alınabilir. Bu klon, sahneye (takı modelinin bulunduğu konuma yakın bir yere) eklenir ve sürüklenen taşı temsil eden geçici objeye dönüşür.
+* **Sürüklenen Taşın Başlangıç Pozisyonu:** Başlangıçta, kullanıcı taşı ilk tıkladığında nerede olacağını belirlemek gerekir. Mantıken, taş listesi kamera HUD'unda olduğu için, kullanıcı tıklar tıklamaz taşın kopyasını kameranın önünde, tıkladığı noktaya yakın bir konumda ortaya çıkarmak doğal olacaktır. Örneğin, kamera koordinatlarında taş listesi grubunun konumuna denk gelecek şekilde yeni taşı sahnede konumlandırabiliriz. Alternatif yaklaşım: Taşı doğrudan kullanıcının imlecinin (mouse pointer) altına yerleştirmek. Bunu yapmak için Three.js raycaster kullanarak imlemin 3D uzaydaki konumunu bulabiliriz (örneğin zemine paralel bir düzlemde kesişim noktası). Ancak daha basit bir yöntem, imleç hareketlerini 2D ekrandan 3D konuma orantılı çevirmektir. **react-use-gesture** kütüphanesinin `useDrag` hook'u bu konuda yardımcı olabilir. Max Rohde'nin örneğinde, `useDrag` ile pointer hareketi (piksel cinsinden) okunup, dünya koordinatında uygun orana bölünerek mesh konumu güncelleniyor. Benzer şekilde, biz de sürüklenen taşın konumunu imleç hareketine göre sürekli güncelleyeceğiz.
+
+Örneğin:
+
+```jsx
+const bindDrag = useDrag(({ offset: [x, y] }) => {
+  // Taşı ekran piksel ofsetine göre hareket ettir
+  const [, , currentZ] = draggingPosition; 
+  setDraggingPosition([x / aspect, -y / aspect, currentZ]);
+}, { pointerEvents: true });
+...
+<mesh position={draggingPosition} {...bindDrag()} />  // sürüklenen taş
+```
+
+Yukarıdaki kodda imleç hareketiyle X ve Y ekseninde ofset alınıp, dünya koordinat sistemine ölçeklenerek mesh pozisyonu ayarlanıyor. Bu sayede kullanıcı taşı sürüklerken taş modeli de ekranda onunla birlikte hareket eder. `pointerEvents: true` kullanımı, `useDrag` hook'unun hem fare hem dokunmatik olaylarını yakalamasını sağlar. (Not: R3F, pointer event’lerini zaten birleşik bir şekilde sağladığından, `onPointerDown/Move` kullanmak da mobil ve masaüstü için yeterlidir.)
+
+* **OrbitControls etkileşimi:** Bir taşı sürüklemeye başladığımızda, istemeden sahneyi döndürmemek için OrbitControls'u geçici olarak devre dışı bırakmak isteyebiliriz. Bunu, OrbitControls bileşenine bir `enabled` prop'u vererek kontrol edebiliriz. Örneğin, React state ile `isDragging` durumunu takip edip `<OrbitControls enabled={!isDragging} />` kullanarak sürükleme sırasında orbiti kilitleyebiliriz. Bu sayede kullanıcı taşı bırakana kadar sahne dönmez, sadece taş hareket eder. (Bu isteğe bağlı bir iyileştirmedir; eğer olay yakalama doğru yapılmışsa, taş mesh'i pointerDown aldığında OrbitControls zaten o anda devreye girmeyecektir.)
+
+**2. Sürükleme Sırasında Konumlandırma:** Kullanıcı taşı sürüklerken, taşı takı üzerine yönlendirmesi beklenir. Bu aşamada kullanıcı deneyimini iyileştirmek için bazı görsel geri bildirimler verebiliriz:
+
+* **Eğriye Yaklaştırma:** Takı modelinin üzerinde taşların dizileceği bölüm, görünmez bir **eğri (curve)** ile temsil edilecek demiştik. Örneğin, bileklik için bileğin etrafında dairesel bir eğri, kolye için U şeklinde bir eğri vb. Bu eğriyi önceden Three.js ile tanımlayacağız (aşağıdaki bölümde detaylı anlatıldı). Kullanıcı taşı bu eğriye yaklaştırdığında, taşı otomatik olarak eğri üzerinde uygun noktaya yaklaştırma (snap) yapabiliriz. Örneğin, imleç taşı takının üzerindeyken, taşı eğri üzerindeki en yakın noktaya hizalayarak hafif bir **mıknatıs etkisi** verebiliriz. Bu sayede kullanıcı tam doğru noktaya bırakmasa bile, taş kendini zincir üzerinde doğru konuma çekebilir.
+* **Kesişim Algılama:** Mıknatıs etkisini uygulamak için, sürükleme sırasında taşın eğriyle mesafesini hesaplayabiliriz. Bir yöntem, Three.js raycaster kullanarak, sürüklenen taş için imleç ışınını takının görünmez **tube** geometrisine çarptırmaktır. Eğer ray, takı eğrisini temsil eden tüp geometriyle kesişirse, kesişim noktası bize taşın takı üzerindeki yerini verir. Bu noktada taşı anlık olarak o kesişim noktasına yerleştirebilir veya sadece bir kılavuz olarak kullanabiliriz (örneğin taşı yarı saydam gösterip hedef noktayı belirtmek gibi). Kesişim algılanmazsa, taşı serbestçe imleç pozisyonunda (örneğin kameraya göre sabit bir derinlikte) hareket ettirmeye devam edebiliriz.
+* **Görsel Vurgulama:** Taş zincirin üzerine geldiğinde, kısa bir **highlight** efekti kullanılabilir. Örneğin, taş modelinin etrafında hafif bir parıltı, veya zincir eğrisinin ilgili segmentinin geçici olarak parlak renkle vurgulanması gibi bir geri bildirim, kullanıcının taşı nereye bırakacağını anlamasını kolaylaştırır.
+
+**3. Bırakma (Drop) İşlemi:** Kullanıcı mouse'u bıraktığında veya parmağını ekrandan çektiğinde (`onPointerUp` olayı veya `useDrag` hook'unda drag sonunda) sürüklenen taşın konumunu sonlandıracağız. Bu noktada:
+
+* **Konum Snap ve Hizalama:** Eğer taş, takı modelinin yakınına bırakıldıysa, onu kesin olarak **eğri üzerindeki bir noktaya kilitlemeliyiz**. Takı modeline ait **CatmullRomCurve3** eğrisi boyunca taşın en yakın konumunu hesaplarız. Three.js `Curve` sınıfları, bir eğri üzerinde \[0,1] aralığında parametre ile gezinmeyi sağlar. Uygun bir parametre `t` bulup `curve.getPointAt(t)` ile eğri üzerinde 3D konumu alabiliriz. Parametreyi bulmak için:
+
+  * En basit yol, eğri üzerinde ince aralıklarla noktalar örnekleyip (örneğin 100 nokta) bunlardan sürüklenen taşın son pozisyonuna en yakın olanını bulmaktır. Bu noktanın parametresi yaklaşık konumu verir.
+  * Daha gelişmiş bir yöntem, eğrinin `getPointAt` fonksiyonunu bir optimizasyon ile tersine kullanmaktır; ancak örnekleme genellikle yeterlidir.
+* Bulduğumuz noktaya taşı merkezliyoruz: `stoneMesh.position.copy(pointOnCurve)`. Ardından, taşın **yönelimi** de zincire uygun hale getirilebilir. Örneğin, bileklikte taşlar bileziğin dışına bakacak şekilde dizilmeli. Bunu yapmak için eğrinin o noktadaki teğet (tangent) vektörünü kullanabiliriz. Three.js'de `curve.getTangentAt(t)` bize o parametredeki teğet yönünü verir. Taş modelini bu yöne bakacak şekilde döndürmek için `stoneMesh.lookAt(pointOnCurve.clone().add(tangent))` yöntemini uygulayabiliriz. Bu sayede taş, eğrinin gidiş yönüne göre hizalanır ve zincirin doğal akışına uyum sağlar.
+* **Taşı Yerleştirme:** Konum ve yön ayarlandıktan sonra, sürüklenen taşı artık **kalıcı olarak takı üzerine ekleyebiliriz**. Uygulama mantığı açısından bu, state'e bu taşın eklenmesi anlamına gelir. Örneğin `placedStones` adında bir state listemiz olabilir; `setPlacedStones([...placedStones, { type: stoneType, t }])` ile yeni taşı listeye ekleriz. Render tarafında da `placedStones.map` ile her birini bir `<mesh>` olarak eğri üzerindeki yerine çizeriz. (Aslında, biz sürükleme boyunca zaten o taşı sahnede gösteriyorduk; bırakma anında belki sadece durumunu "yerleşti" diye işaretleyip draggingStone state'ini temizleyeceğiz.)
+* **Geçersiz Bırakma:** Kullanıcı taşı alıp takı üzerine değil de bambaşka bir yere bırakırsa, bu durumda taşı yerine koymamalıyız. Örneğin kullanıcı arayüzle yanlışlıkla dışarı sürüklediyse, `onPointerMissed` veya benzeri bir yöntemle bunu yakalayıp, yaratmış olduğumuz geçici taşı sahneden kaldırabiliriz. Yani, bırakma noktası geçerliyse taşı yerleştir, değilse iptal et (taş envantere geri dönüyor gibi düşünebiliriz). Bu, daha bütünleyici bir deneyim için düşünülmesi gereken bir ayrıntıdır.
+
+**4. Taşlar Arası Mesafe ve Çakışma Kontrolü:** Yeni taşı yerleştirdikten sonra, **diğer taşlarla çakışmamasına** dikkat etmeliyiz. Gerçek bir bileklikte taşlar birbirine çok yaklaştırılamaz; aralarında en az bir minimum mesafe olmalıdır. Bunu sağlamak için:
+
+* Her taş modeli için yaklaşık bir boyut veya yarıçap tanımlayabiliriz (örneğin, tüm taşlar için ortalama bir çarp çapı). Diyelim ki her taş için merkezinden ölçülen minimum boşluk açısı var (bilezik etrafında derece cinsinden) veya mesafe var.
+* Yeni yerleşen taş için, `placedStones` listesindeki diğer taşların eğri parametre değerleriyle kıyaslama yaparız. Komşu taşın parametresi ile yenisinin parametresi arasındaki farkı **eğri uzunluğuna** orantılı hesaplayarak aradaki yay uzunluğunu bulabiliriz. Eğer bu mesafe belirlenen minimum değerden az ise, bir çakışma durumu var demektir.
+* **Çakışma durumunda tepki:** Taşları üst üste bindirmeyi tamamen engellemeliyiz. Eğer yeni taş çok yakına bırakılmışsa, birkaç farklı yaklaşımdan birini seçebiliriz:
+
+  * **Konumu Ayarlama:** Taşı, en yakın komşudan yeterli uzaklığa kaydır. Örneğin, eğer soldaki taşa çok yakınsa, yeni taşın parametresini hafifçe sağa kaydırarak arayı açabiliriz. Bu, taşı eğri boyunca birkaç milimetre oynatmak anlamına gelir. Bunu kademeli ve animasyonlu yapmak kullanıcıya yumuşak bir **sıkışma animasyonu** hissiyatı verecektir. Taş bırakıldığında hafifçe yer değiştirip sonra yerine oturursa, sanki itişip boşluğu bulmaya çalışıyormuş gibi bir etki yaratır.
+  * **Reddetme/Hata bildirimi:** Eğer takı üzerinde artık boş yer kalmadıysa (örneğin bileklik tamamen dolduysa), yeni taşı eklemeyip kullanıcıyı bilgilendirmek gerekir. Uygulamada bir sınır belirleyebiliriz – mesela bilezik en fazla N tane taş alabilir. Kullanıcı N+1’inci taşı eklemeye çalıştığında, işlemi iptal edip bir uyarı gösterebiliriz. Bu uyarı metinsel (“Bracelet is full!”) olabilir veya görsel bir tepki de verilebilir (örneğin bileziği hafif titretme animasyonu ile artık yer olmadığı vurgulanabilir).
+* Sıkışma animasyonu için basit bir uygulama, **taşın ölçeğini veya pozisyonunu kısa bir an değiştirip geri bırakmak** olabilir. Örneğin, çakışma algılanırsa taşı 1.1x ölçekleyip tekrar 1.0'a getirmek veya hafif zıt yönde itip geri çekmek gibi mikro animasyonlar, kullanıcının bir sınır olduğunu sezmesini sağlar. Bu animasyonlar React Spring veya GSAP gibi kütüphanelerle yapılabileceği gibi, Three.js `clock` ile manuel de gerçekleştirilebilir. Önemli olan, animasyonun kısa ve yumuşak olması, genel deneyimi bozacak uzunlukta olmamasıdır.
+
+## Takı Modeli ve Eğri (Curve) Hizalaması
+
+Takı modelini (bileklik/kolye/halhal) 3D sahneye yerleştirdik, ancak taşları nereye yerleştireceğimizi belirleyen soyut bir **eğri** tanımlamamız gerekiyor. Bu eğri, takının taş dizilen kısmını temsil eder:
+
+* **Eğri Tanımı:** Ürün tipine göre farklı bir eğri olabilir. Bileklik genellikle kapalı bir daire (360° halka) olacağından, CatmullRomCurve3 ile noktaları dairesel olarak tanımlayıp `closed=true` ayarıyla kapalı bir eğri oluşturabiliriz. Örneğin, birim çember için:
+
+  ```js
+  const curvePoints = [];
+  for(let i=0; i<12; i++){
+    const angle = (2 * Math.PI * i) / 12;
+    curvePoints.push(new THREE.Vector3(Math.cos(angle)*R, Math.sin(angle)*R, 0));
+  }
+  const braceletCurve = new THREE.CatmullRomCurve3(curvePoints, true);
+  ```
+
+  Bu, yarıçapı R olan yaklaşık dairesel bir eğri verecektir. Daha fazla nokta kullanılırsa daha düzgün bir daire olur.
+
+  Kolye için ise açık uçlu bir eğri olacaktır (`closed=false`). Örneğin bir "U" şekli vermek için üst yarım daire noktaları kullanılabilir. Halhal da bilezik gibi dairesel olabilir.
+
+* **Modelle Uyum:** Eğer takı modelinin geometri bilgilerine erişim varsa (örneğin model sahnesinde taşların dizileceği yüzey üzerinde kontrol noktaları belirlenmişse), bu noktaları alıp eğri oluşturmak en isabetli yöntem olur. Aksi halde, takı modelinin boyutlarına göre biz elle bir eğri tanımlıyoruz.
+
+* **Görünmez Tüp:** Eğriyi oluşturduktan sonra, etkileşimlerde kullanmak için bir **TubeGeometry** yaratabiliriz. `const tubeGeom = new THREE.TubeGeometry(braceletCurve, tubularSegments, radius, radialSegments, closed)`. Burada `radius` çok küçük bir değer olabilir (taşların oturacağı ip kalınlığında, örneğin 0.05). Bu tüp geometriyi sahneye bir mesh olarak ekleyeceğiz ancak `material.opacity = 0` ya da `visible={false}` yaparak kullanıcıya görünmez kılacağız. Yine de bu mesh, raycaster tarafından algılanabilir olacaktır. Bu sayede kullanıcı taşı takı üzerine getirince **görünmez zincir** ile çarpışmayı tespit edebiliyoruz. `tubeMesh` üzerinde `onPointerOver`, `onPointerOut` olayları da tanımlanabilir. Örneğin, pointerOver olduğunda takının zincir kısmını hafif parlatan bir efekt veya sadece dahili state ile "şu an zincir üzerinde" bilgisini tutabiliriz.
+
+* **Taşları Eğri Boyunca Dizme:** Bir taş bırakıldıktan sonra, artık onun eğri üzerindeki parametre değerini biliyoruz (yukarıda t hesaplamıştık). Bu taşın sahnedeki pozisyonunu doğrudan `curve.getPointAt(t)` ile alıp yerleştiriyoruz. Birden fazla taş olduğunda, hepsini eğri üzerindeki konumlarına göre çiziyoruz. Bu noktada, her bir taş için belki eğri üzerinde bir **normal** hesabı yapıp taşları biraz eğriden yukarıda konumlandırmak gerekebilir (taşların yarıçapı kadar, yoksa taş modeli zincire gömülü görünebilir). Three.js'te bir eğrinin normal vektörünü almak zor olabilir çünkü eğri düzlemsel olmayabilir; pratikte basitçe z ekseni yönünde hafif offset vermek de yetebilir, veya takı düzlemdeyse sabit bir normal (örneğin bileklik XY düzlemindeyse, Z ekseni normal olabilir). Bu detay, modele göre ayarlanacak bir konudur.
+
+## OrbitControls ve Mobil Desteği
+
+**OrbitControls:** Kullanıcı deneyimini zenginleştirmek için sahneye eklediğimiz `<OrbitControls />`, 3D modelin fare veya dokunma ile incelenmesini sağlar. Kullanıcı takıyı her açıdan görebilir, yakınlaşıp uzaklaşabilir. OrbitControls kütüphanesi, mobilde pinch-to-zoom ve dokunarak döndürme gibi hareketleri de otomatik destekler. Yani masaüstünde fare ile yaptığımız dönüş/zoom işlemleri, mobil cihazda dokunmatik jestlerle de çalışır. Bu, R3F'nin pointer event sisteminin bir avantajıdır – tek bir `OrbitControls` bileşeni hem mouse hem touch için gerekli olayları yönetir. Aynı şekilde taşları sürüklerken kullandığımız `onPointerDown`, `onPointerMove` gibi event'ler de mobilde dokunma ile tetiklenir. Bu sayede ayrı bir dokunmatik kod yazmaya gerek kalmaz; uygulama doğal olarak mobil uyumlu olur.
+
+Mobilde dikkat edilmesi gereken bir nokta, küçük taş önizlemelerinin parmakla seçiminin kolay olmasıdır. Taşlar ekranda çok küçük görünüyorsa, kullanıcı dokunmakta zorlanabilir. Bunu önlemek için taş HUD listesini biraz büyük ölçekli tutabilir veya her taşın etrafındaki etkileşim alanını (hitbox) biraz geniş tutabiliriz (örneğin şeffaf bir daha büyük düzlem ekleyerek tıklamayı kolaylaştırmak). Ayrıca, eğer liste taşarsa (10 taş dikeyde küçük ekranlarda), yatay kaydırılabilir bir liste veya 2 sütunlu düzen gibi responsif düzenlemeler yapılabilir. Bu düzenlemeler HTML/CSS tarafında çözülebilir veya R3F içindeki konumlandırmayla da halledilebilir.
+
+**use-gesture Alternatifi:** Biz pointer event’lerle sürüklemeyi ele aldık, ancak ihtiyaç duyulursa `@use-gesture/react` kütüphanesi ile dokunma jestlerini daha ince kontrol etmek de mümkün. Örneğin, birden fazla parmakla yapılan hareketleri veya atalet efektlerini eklemek istenirse bu kütüphane işe yarayabilir. Basit senaryomuz için gerek kalmasa da, `useDrag` hook'unu halihazırda kullandığımız için bu zaten use-gesture'ın bir parçasıdır ve mobil dostudur.
+
+## Ekstra Özellikler ve İyileştirmeler
+
+Son olarak, mümkün olursa ekleyebileceğimiz birkaç hoş özellik:
+
+* **Yerleştirme Efekti:** Taş, zincire bırakıldığında küçük bir **parıltı veya sıçrama efekti** göstermek kullanıcıya tatmin edici bir geri bildirim verebilir. Örneğin, taşı bıraktığımız noktada çok kısa süreli bir parlama (lens flare tarzı) veya birkaç parçacığın saçılması efekti yapılabilir. Bu, seçilen taşın değerli ve “yerine oturduğunu” hissettirecektir. Bunu yapmanın bir yolu, Drei içerisindeki `<Html>` bileşeniyle geçici bir animasyonlu SVG yıldız koymak veya Three.js Particle sistemleriyle minik bir efekt yaratmaktır. Zaman kısıtlıysa basit bir ölçek animasyonu da yeterli olacaktır (taş yerleşirken 1.2x büyüyüp geri 1x boyuta gelmesi gibi).
+* **Kapasite Uyarısı:** Bileklik/kolye dolduğunda (taş kapasitesi aşıldığında) kullanıcının bunu anlaması gerekir. UI tarafında “bracelet full” gibi bir uyarıyı belirgin fakat şık bir şekilde gösterebiliriz. Örneğin, takı modelinin kendisini kırmızı bir parıltıyla anlık vurgulayabilir veya sayfanın bir köşesinde metin belirebilir. Hatta taş eklemeye çalıştığında bileziği sallayarak daha fazla taş alamayacağını belirtmek mümkün (fizik bazlı bir animasyon).
+* **Taş Kaldırma/Değiştirme:** Bu kapsam dışında belirtilmemiş ama kullanıcı yanlış koyduğu bir taşı kaldırmak isterse ne olacak? Ekstra zaman kalırsa, yerleştirilmiş taşlara tıklayarak silme veya sürükleyerek kaldırma özelliği de eklenebilir. Bu, ProductCustomizer deneyimini tamamlar. Örneğin, yerleşik taşı tıklayınca seçip silme butonu göstermek veya çöp kutusuna sürüklemeye izin vermek gibi.
+
+## Sonuç ve Uygulama
+
+Yukarıdaki değişikliklerle, **ProductCustomizer.tsx** dosyasındaki özelleştirme alanı tamamen 3D ve etkileşimli bir hale gelecektir. Tüm düzenlemeleri sadece bu bileşen içinde yaparak, sayfanın geri kalan yapısını bozmamış oluyoruz. Mevcut butonlar, ürün özeti paneli gibi diğer UI parçaları aynen çalışmaya devam edecek. Sadece taş dizme kısmı 2D görüntülerden 3D gerçek zamanlı modele geçiyor.
+
+Bu geçiş sayesinde kullanıcı, takısını gerçeğe yakın bir şekilde kişiselleştirebilecek:
+
+* Taşları üç boyutlu görücek ve **sürükleyip bırakarak** rahatça yerleştirebilecek,
+* Takıyı döndürüp farklı açılardan inceleyebilecek (OrbitControls ile),
+* Mobil cihazlarda da aynı deneyimi dokunarak yaşayabilecek (pointer event’lerin evrenselliği sayesinde),
+* Sistemin kısıtlamaları (taş boyutu, kapasite vs.) sezgisel animasyonlarla iletilecek,
+* Ve genel olarak modern bir 3D ürün özelleştirme arayüzü elde edilecek.
+
+Tüm bu işlemleri yaparken React Three Fiber ve Drei eklentilerini kullandık. Bu sayede Three.js fonksiyonelliğini React paradigması içinde yönetip, React'in state yönetimi ve bileşen yapısını kullanabildik. Örneğin, GLTF modellerini yüklerken Suspense ile uygulamayı bekletebildik, orbit kontrolünü bir bileşen olarak ekledik, vs. Sonuç olarak, kod tek bir dosyada derli toplu kalarak sadece ilgili kısımda değişiklik yapmamıza imkân tanıdı.
+
+Bu yeni 3D arayüz, kullanıcı deneyimini çağdaş bir seviyeye çıkaracak ve etkileşimli özelleştirme ile ürüne değer katacaktır. Artık kullanıcılar bilekliklerini/kolyelerini adeta gerçek bir objeymiş gibi özelleştirip ön izleme şansına sahip olacaklar.
+
+**Kaynaklar:**
+
+* React Three Fiber dokümantasyonu – etkileşimli event kullanımı (pointer olayları hem mouse hem touch için geçerlidir) ve OrbitControls kullanımı.
+* Three.js Eğri üzerinde nesne hizalama (tangent ile bakış yönü ayarı).
+* react-use-gesture ile 3D nesne sürükleme örneği.
+* React Three Fiber ile GLTF model yükleme ve ön yükleme (useGLTF.preload kullanımı).
