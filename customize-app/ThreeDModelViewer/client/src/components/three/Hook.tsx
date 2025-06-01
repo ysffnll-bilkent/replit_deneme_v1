@@ -12,10 +12,10 @@ const Hook: React.FC<HookProps> = ({ position, onDrag }) => {
   const ref = useRef<THREE.Group>(null);
   const [isDragging, setIsDragging] = useState(false);
   const { camera, gl } = useThree();
-  
+
   // Basit hook modeli (mevcut modellerden birini kullan)
-  const { scene } = useGLTF('/models/Box.glb');
-  
+  const { scene } = useGLTF('./models/Box.glb');
+
   const handlePointerDown = (event: any) => {
     event.stopPropagation();
     setIsDragging(true);
@@ -29,25 +29,25 @@ const Hook: React.FC<HookProps> = ({ position, onDrag }) => {
 
   const handlePointerMove = (event: any) => {
     if (!isDragging || !ref.current) return;
-    
+
     event.stopPropagation();
-    
+
     // Basit hareket hesaplama
     const movementX = event.movementX || 0;
     const movementY = event.movementY || 0;
-    
+
     const sensitivity = 0.01;
     const newX = ref.current.position.x + movementX * sensitivity;
     const newY = ref.current.position.y - movementY * sensitivity;
     const newZ = ref.current.position.z;
-    
+
     ref.current.position.set(newX, newY, newZ);
     onDrag([newX, newY, newZ]);
   };
 
   return (
-    <group 
-      ref={ref} 
+    <group
+      ref={ref}
       position={position}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}

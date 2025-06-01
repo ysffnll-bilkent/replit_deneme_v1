@@ -23,7 +23,7 @@ function App() {
   const [stones, setStones] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch("/models/models.json")
+    fetch("./models/models.json")
       .then(res => res.json())
       .then((data: any) => {
         setModels(data);
@@ -32,10 +32,10 @@ function App() {
       .catch(err => {
         console.error("Model verileri yüklenirken hata:", err);
         const fallbackModels = [
-          { name: "Avocado", url: "/models/Avocado.glb" },
-          { name: "BoomBox", url: "/models/BoomBox.glb" },
-          { name: "Box", url: "/models/Box.glb" },
-          { name: "Duck", url: "/models/duck.glb" }
+          { name: "Avocado", url: "./models/Avocado.glb" },
+          { name: "BoomBox", url: "./models/BoomBox.glb" },
+          { name: "Box", url: "./models/Box.glb" },
+          { name: "Duck", url: "./models/duck.glb" }
         ];
         setModels(fallbackModels);
         setUclukModels(fallbackModels);
@@ -59,7 +59,7 @@ function App() {
 
   const handleStoneRemove = (id: string) =>
     setSelectedStones((stones: any) => stones.filter((s: any) => s.id !== id));
-  
+
   const handleUclukRemove = (id: string) =>
     setSelectedUcluks((ucluks: any) => ucluks.filter((s: any) => s.id !== id));
 

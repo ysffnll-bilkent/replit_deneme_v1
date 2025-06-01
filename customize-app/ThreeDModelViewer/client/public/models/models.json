@@ -1,18 +1,22 @@
 [
   {
     "name": "Avocado",
-    "url": "/models/Avocado.glb"
+    "url": "./models/Avocado.glb",
+    "description": "A delicious and healthy avocado model."
   },
   {
     "name": "BoomBox",
-    "url": "/models/BoomBox.glb"
+    "url": "./models/BoomBox.glb",
+    "description": "A classic boombox model."
   },
   {
     "name": "Box",
-    "url": "/models/Box.glb"
+    "url": "./models/Box.glb",
+    "description": "A simple box model."
   },
   {
     "name": "Duck",
-    "url": "/models/duck.glb"
+    "url": "./models/duck.glb",
+    "description": "A charming rubber duck model."
   }
 ]
