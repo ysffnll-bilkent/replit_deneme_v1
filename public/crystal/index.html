@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Crystal Viewer | Mine Jewellery Art</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f3ff 0%, #fdf2f8 50%, #fef3c7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #a855f7, #ec4899);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+        .gem {
+            width: 40px;
+            height: 40px;
+            fill: white;
+        }
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        p {
+            font-size: 1.1rem;
+            color: #6b7280;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        .status {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #ddd6fe;
+            color: #7c3aed;
+            border-radius: 9999px;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+        .instructions {
+            background: #f3f4f6;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            text-align: left;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #374151;
+        }
+        .instructions ol {
+            color: #6b7280;
+            padding-left: 1.2rem;
+        }
+        .instructions li {
+            margin-bottom: 0.5rem;
+        }
+        .code {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg class="gem" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 2l3 6h6l3-6h-12zm-1.794 7l-2.206 4.72 6 6.28 6-6.28-2.206-4.72h-7.588zm9.794 2.28l2.5 2.72-2.5 2.72v-5.44z"/>
+            </svg>
+        </div>
+        
+        <h1>3D Crystal Viewer</h1>
+        <p>Advanced crystal energy visualization and customization tools for spiritual jewelry design.</p>
+        
+        <div class="status">Integration Ready</div>
+        
+        <div class="instructions">
+            <h3>To Complete Setup:</h3>
+            <ol>
+                <li>Navigate to <span class="code">customize-app/ThreeDModelViewer</span></li>
+                <li>Run: <span class="code">npm install</span></li>
+                <li>Run: <span class="code">npm run build</span></li>
+                <li>Copy the build output to <span class="code">public/crystal/</span></li>
+            </ol>
+            <p style="margin-top: 1rem; font-size: 0.9rem;">Once completed, this placeholder will be replaced with your full 3D crystal visualization application.</p>
+        </div>
+    </div>
+</body>
+</html>

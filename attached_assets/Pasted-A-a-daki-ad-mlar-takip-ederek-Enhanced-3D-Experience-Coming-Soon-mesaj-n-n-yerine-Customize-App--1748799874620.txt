@@ -1,0 +1,185 @@
+Aşağıdaki adımları takip ederek “Enhanced 3D Experience Coming Soon” mesajının yerine Customize-App’inizi (build edilmiş haliyle) çalışır hâle getirebilirsiniz. Örnek olarak:
+
+---
+
+## 1. Express Sunucu Ayarının Doğru Olduğunu Kontrol Edin
+
+Öncelikle, kök dizindeki `server.js` dosyasının `/crystal` altındaki statik dosyaları doğru şekilde “public/crystal” dizininden serve ettiğinden emin olun. Örneğin:
+
+```js
+// server.js
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+
+// Ana site statik dosyaları
+app.use(express.static(path.join(__dirname, "public")));
+
+// Customize-App build çıktısını /crystal altında sun
+app.use("/crystal", express.static(path.join(__dirname, "public/crystal")));
+
+// Diğer tüm istekler ana siteye yönlendirilsin (React Router fallback)
+app.get("*", (req, res) => {
+  if (!req.path.startsWith("/crystal")) {
+    res.sendFile(path.join(__dirname, "public/index.html"));
+  }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor`);
+});
+```
+
+> **Kontrol:**
+>
+> * `public/crystal/index.html` ve `public/crystal/static/...` dosyalarının gerçekten orada olduğundan emin olun.
+> * Tarayıcıda doğrudan `http://localhost:3000/crystal` adresine girdiğinizde Customize-App’inizin açılması gerekiyor. Eğer hâlâ “Coming Soon” görüyorsanız build çıktılarını `public/crystal/` altına kopyaladığınız `postinstall` adımını düzgün tetiklememişsiniz demektir.
+
+---
+
+## 2. Ana Site Kodunda “Coming Soon” Bölümünü Bulun
+
+Ana site projesi içinde, Crystal Energy Visualization sekmesine karşılık gelen React bileşenini bulun. Örneğin bu, `src/routes/CrystalPage.jsx` ya da `src/pages/Crystal.jsx` gibi bir dosya olabilir. İçeriğinde muhtemelen şöyle bir satır var:
+
+```jsx
+function CrystalPage() {
+  return (
+    <div className="crystal-container">
+      <h1>Enhanced 3D Experience Coming Soon</h1>
+      {/* Burada Coming Soon mesajı veya statik placeholder */}
+    </div>
+  );
+}
+```
+
+Dosyanın yolu sizin projenizde farklı olabilir; “Coming Soon” ifadesini aratarak ilgili dosyayı bulun.
+
+---
+
+## 3. “Coming Soon” Kodunu Kaldırın, Yerine `<iframe>` Ekleyin
+
+Bulduğunuz bileşeni şu şekilde güncelleyin. Örneğin `src/routes/CrystalPage.jsx` ise:
+
+```diff
+- import React from "react";
+-
+- function CrystalPage() {
+-   return (
+--   <div className="crystal-container">
+-      <h1>Enhanced 3D Experience Coming Soon</h1>
+-      {/* Geçici mesaj */}
+-    </div>
+-   );
+- }
+- export default CrystalPage;
++ import React from "react";
++
++ function CrystalPage() {
++   return (
++     <div style={{ width: "100%", height: "100vh", margin: 0, padding: 0 }}>
++       <iframe
++         src="/crystal"
++         title="Customize App"
++         style={{
++           width: "100%",
++           height: "100%",
++           border: "none",
++           margin: 0,
++           padding: 0,
++         }}
++       />
++     </div>
++   );
++ }
++
++ export default CrystalPage;
+```
+
+### Açıklamalar
+
+1. **`src="/crystal"`**
+
+   * Bu, Express’in `/crystal` URL’ini `public/crystal/index.html` olarak serve etmesine karşılık gelir.
+   * Yani tarayıcı bu iframe’i yüklediğinde, Customize-App’inizin derlenmiş HTML/JS/CSS dosyaları otomatik olarak çalışır.
+
+2. **`style={{ width: "100%", height: "100vh" }}`**
+
+   * Bütün ekranı kaplaması için yüksekliği `100vh` belirledik. Gerekirse `height: "calc(100vh - <NavbarHeight>)"` gibi bir hesap da yapılabilir.
+
+---
+
+## 4. React Router Ayarını Kontrol Edin
+
+Eğer ana site içinde React Router kullanıyorsanız, `/crystal` rotasının `CrystalPage` bileşenine yönlendirildiğinden emin olun. Örneğin:
+
+```jsx
+// src/App.jsx veya src/routes.jsx
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import HomePage from "./routes/HomePage";
+import CrystalPage from "./routes/CrystalPage";
+import NotFoundPage from "./routes/NotFoundPage";
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        {/* Diğer rotalar */}
+        <Route path="/crystal" element={<CrystalPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default App;
+```
+
+* Bu sayede kullanıcı `/crystal` rotasına geldiğinde `CrystalPage` bileşeni render edilir ve içinde `<iframe src="/crystal" />` çalışır.
+* Yani hem React Router’dan `/crystal` yolunu elde ediyoruz, hem de iframe’in kaynak adresi yine `/crystal` (Express’in static servisi) oluyor.
+
+---
+
+## 5. “Coming Soon” Yerine Gelen Son Hali Deneme
+
+1. **Replit’te sunucuyu yeniden başlatın** veya local’da `npm run start` komutu ile sunucuyu ayağa kaldırın.
+2. Tarayıcıyı açın:
+
+   * `/` → Ana site eksiksiz görünsün.
+   * `/crystal` → “Coming Soon” yerine Customize-App’inizin derlenmiş arayüzü yüklensin.
+   * Crystal sekmesine tıkladığınızda otomatik olarak `/crystal` URL’ine gitmesi gerekiyorsa, navigasyon menünüzde ilgili linki `/crystal` olarak güncelleyin.
+
+---
+
+## 6. Özet Akış
+
+1. **Express Sunucu**
+
+   * `public/crystal` altındaki Customize-App statik dosyalarını `/crystal` rotasında sunuyor.
+   * Diğer tüm isteklerde `public/index.html`’i (Ana site) döndürüyor.
+
+2. **React Kodu**
+
+   * Crystal Energy Visualization sayfasındaki “Coming Soon” bölümünü tamamen kaldırdık.
+   * Yerine bir `<iframe src="/crystal" />` ekledik. Bu iframe Express’in `/crystal` servisine yöneliyor.
+
+3. **Build ve Kopyalama**
+
+   * Replit çalıştırıldığında kök `package.json`’daki `postinstall` otomatik olarak:
+
+     1. `customize-app/ThreeDModelViewer` içine girip `npm install && npm run build` yapacak.
+     2. `build/` klasöründen çıkan tüm dosyaları `public/crystal/` altına kopyalayacak.
+   * Böylece hem ana site (`public/index.html`) hem Customize-App build çıktısı (`public/crystal/index.html` + varlıklar) hazır olacak.
+
+4. **Kullanıcı Deneyimi**
+
+   * Site açıldığında normal sayfalar olduğu gibi devam eder.
+   * “Crystal Energy Visualization” sekmesine veya doğrudan `/crystal` adresine gittiklerinde, iframe içinde Customize-App’in tam işlevsel halini görürler.
+
+Bu adımları uyguladıktan sonra “Enhanced 3D Experience Coming Soon” yazısını görememeli, onun yerine ayarladığınız Customize-App arayüzü iframe içinde çalışıyor olmalıdır.
