@@ -1,0 +1,214 @@
+Aşağıdaki üç başlık altında ilerleyelim:
+
+---
+
+## 1. Hatanın Tam Metni
+
+Tarayıcı konsolunda aldığınız hata şu şekilde gözüküyordu:
+
+```
+toast.tsx:1 Uncaught Error: @vitejs/plugin-react can't detect preamble. Something is wrong. See https://github.com/vitejs/vite-plugin-react/pull/11#discussion_r430879201
+    at toast.tsx:1:31
+(anonymous) @ toast.tsx:1
+```
+
+Yani:
+
+1. **Dosya**: `toast.tsx`
+2. **Satır 1’de** (daha dosyanın ilk karakterlerinde)
+3. `@vitejs/plugin-react` compiler’ı, JS/TSX dosyanızın bir “preamble” (React import’u veya JSX pragma) içermediğini düşünüp, derleme sırasında bu hatayı fırlatıyor.
+
+---
+
+## 2. Replit Ortamı İçin Düzeltme Önerisi
+
+Replit’te Vite+React projesi açıldığında otomatik olarak `npm install` ve sonra `npm run dev`/`npm start` gibi adımlar işliyor. Aşağıdaki adımları izleyerek hata, dosya formatı ve yönlendirme konularını bir arada çözebiliriz:
+
+### A) `toast.tsx` İçindeki “preamble” Eksikliği
+
+`@vitejs/plugin-react`, TSX/JSX dosyasının başında en azından bir React import’u veya JSX pragma görecek şekilde ayarlanmış olmayı bekler. Eğer dosyanın ilk satırında hiçbir şey yoksa, “preamble” bulunamadığı için aynı hatayı fırlatır.
+
+**Çözüm**: `toast.tsx` dosyanızın en üstüne mutlaka şu satırlardan birini ekleyin:
+
+1. **Klasik React import’u (React 17 öncesi veya Classic JSX Runtime kullanıyorsanız)**
+
+   ```tsx
+   import React from "react";
+
+   export default function Toast() {
+     return <div>Merhaba!</div>;
+   }
+   ```
+
+2. **Automatic JSX Runtime (React 17+ ve TypeScript “react-jsx” kullanıyorsa) için JSX pragma**
+
+   * `tsconfig.json` içinde zaten `"jsx": "react-jsx"` ve `"jsxImportSource": "react"` ayarı varsa, aşağıdakini eklemek yeterli olabilir:
+
+     ```tsx
+     /** @jsxImportSource react */
+     import React from "react";
+
+     export default function Toast() {
+       return <div>Merhaba!</div>;
+     }
+     ```
+   * Eğer `tsconfig.json`’ınızda bu ayarlar yoksa, dosyanın en üstüne en azından `import React from "react";` satırını koyun.
+
+> **Özet**: Replit’te “toast.tsx” ya da başka bir TSX/JSX dosyası başlarken mutlaka `import React from "react";` (veya uygun pragma) satırını görmek zorunda. Aksi hâlde `@vitejs/plugin-react` “preamble” algılayamaz ve yukarıdaki hatayı fırlatır.
+
+---
+
+### B) Replit’te “Crystal” Sayfasını Varsayılan Yapmak
+
+Mevcut yapı şu şekildeydi:
+
+* Express sunucu:
+
+  ```js
+  app.use(express.static(path.join(__dirname, "public")));
+  app.use("/crystal", express.static(path.join(__dirname, "public/crystal")));
+  app.get("*", (req, res) => {
+    if (!req.path.startsWith("/crystal")) {
+      res.sendFile(path.join(__dirname, "public/index.html"));
+    }
+  });
+  ```
+* `public/index.html` içinde iframe:
+
+  ```html
+  <iframe src="/crystal" …></iframe>
+  ```
+
+Şu an “ana sayfa” olarak `public/index.html` yüklendiği için kullanıcı `https://[Replit-URL]/` adresine gittiğinde önce placeholder metin (“3D Crystal Viewer … Coming Soon”) gösteriliyor. Biz “Crystal Energy” uygulamasını doğrudan ilk açılışta göstermek istediğimize göre, birkaç farklı yöntem var. En basit iki yol:
+
+---
+
+#### Yöntem 1: `app.get("*")` İçindeki Yönergeyi Değiştir
+
+Express’te, “herhangi bir yol” geldiğinde `/crystal` rotasına yönlendirmek (redirect) yerine doğrudan `/crystal/index.html`’i serve edecek şekilde değiştirelim. Örneğin:
+
+```js
+// server-merged.js
+
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const app = express();
+
+// 1) Ana site statik dosyalarını sun
+app.use(express.static(path.join(__dirname, "public")));
+
+// 2) /crystal rotası altına customize-app build çıktılarını sun
+app.use("/crystal", express.static(path.join(__dirname, "public/crystal")));
+
+// 3) Diğer tüm istekleri /crystal/index.html'e yönlendir (Crystal Energy artık default)
+app.get("*", (req, res) => {
+  // Eğer talep doğrudan bir statik dosya ise (CSS, JS, resim vs.) ona göre cevap versin:
+  if (req.path.startsWith("/assets") || req.path.endsWith(".js") || req.path.endsWith(".css") ) {
+    return res.sendFile(path.join(__dirname, "public", req.path));
+  }
+  // Aksi hâlde her yolu /crystal/index.html'e yönlendir:
+  res.sendFile(path.join(__dirname, "public/crystal/index.html"));
+});
+
+// 4) Sunucuyu ayağa kaldır
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor`);
+});
+```
+
+> **Ne Değişti?**
+>
+> * `app.get("*")` artık “tüm yollar”ı (örneğin `/`, `/foo`, `/about`) `public/crystal/index.html`’e yönlendiriyor. Böylece kullanıcı `https://[Replit-URL]/` adresine ilk girdiğinde Crystal Energy (yani customize-app build’i) görünmüş olacak.
+> * Statik dosyalar hâlâ `public` altında /assets, /favicon, /robots.txt vs. serve edilebiliyor.
+
+---
+
+#### Yöntem 2: `public/index.html` İçeriğini Direkt `/crystal`’e Yönlendirecek Şekilde Güncellemek
+
+Eğer `public/index.html`’i hiç kullanmak istemiyorsanız, içeriğini basit bir redirect sayfasına dönüştürebilirsiniz:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0; url=/crystal" />
+    <title>Redirecting…</title>
+  </head>
+  <body>
+    <p>Eğer otomatik yönlendirme olmazsa <a href="/crystal">buraya tıklayın</a>.</p>
+  </body>
+</html>
+```
+
+Böylece hem Express hem de Vite “fallback” mantığı olarak `public/index.html`’e döndüğünde, anında `/crystal` yoluna atlayacak. Ancak birinci yöntem genellikle daha güvenli ve temiz kalıyor.
+
+---
+
+## 3. Replit’e Vereceğiniz Tam Prompt
+
+Aşağıdaki prompt’u bir seferde Replit AI’ya gönderin; Replit AI bu adımları otomatik uygulayacak:
+
+````
+Projemiz React+Vite altyapısıyla çalışıyor, Express sunucu üzerinden hem “/” altındaki ana siteyi hem de “/crystal” altındaki 3D-customizer’ı serve ediyoruz. İstediğimiz:
+
+1. TSX/JSX dosyalarında “@vitejs/plugin-react can’t detect preamble” hatasını ortadan kaldıralım. 
+   - Özellikle toast.tsx dosyasının en üstüne `import React from "react";` ekleyelim (veya `/** @jsxImportSource react */`). 
+   - Tüm TSX/JSX bileşenlerinin başında React import’u olduğundan emin olalım.
+
+2. Her `npm install` veya Replit’in otomatik kurulum adımında:
+   - `customize-app/ThreeDModelViewer` klasörüne giriş yap.
+   - `npm install` çalıştıralım.
+   - `npm run build` ile derleyelim.
+   - Ortaya çıkan `dist/*` içeriğini `public/crystal/` altına kopyalayalım (önce `public/crystal/` klasörünü temizle, sonra `dist`’teki her şeyi oraya at).
+
+   Bunu sağlayacak şekilde `package.json`’ın `"scripts"` bölümüne:
+   ```json
+   "install-crystal": "cd customize-app/ThreeDModelViewer && npm install",
+   "build-crystal": "cd customize-app/ThreeDModelViewer && npm run build && cd ../../ && rm -rf public/crystal && mkdir -p public/crystal && cp -r customize-app/ThreeDModelViewer/dist/* public/crystal/",
+   "postinstall": "npm run install-crystal && npm run build-crystal"
+````
+
+satırlarını ekle.
+
+3. Express sunucunun (örneğin `server-merged.js`) kök `app.get("*")` yöntemini aşağıdaki gibi değiştir:
+
+   ```js
+   // ... diğer middleware'ler
+   app.get("*", (req, res) => {
+     if (req.path.startsWith("/assets") || req.path.endsWith(".js") || req.path.endsWith(".css")) {
+       // Statik dosyaları olduğu gibi serve et
+       return res.sendFile(path.join(__dirname, "public", req.path));
+     }
+     // Diğer tüm yolları CRYSTAL build'ine yönlendir
+     res.sendFile(path.join(__dirname, "public/crystal/index.html"));
+   });
+   ```
+
+   Böylece kullanıcı “/” adresine her geldiğinde otomatik olarak `public/crystal/index.html` yüklenecek.
+
+4. Replit, “Run” dediğinde:
+
+   * `npm install` aşamasında otomatik olarak `install-crystal` + `build-crystal` çalışacak ve public/crystal güncellenecek.
+   * Sonra Express sunucu ayağa kalkacak.
+   * Tarayıcıda `https://[REPLIT-URL]/` adresini ziyaret eden kullanıcı doğrudan Crystal Energy (3D uygulama) sayfasını görecek.
+
+Bunları tek bir commit olarak uygula ve projedeki TSX dosyalarının başına gerekli React import’larını ekle.
+
+```
+
+---
+
+### Sonuç
+
+1. **“preamble” hatası**: Her `.tsx` veya `.jsx` dosyanın en üstünde mutlaka `import React from "react";` satırı (veya yeni JSX runtime için uygun pragma) olacak.  
+2. **Build + kopyalama**: `package.json`’daki `postinstall` adımı sayesinde her `npm install` sonrası customize-app derlenip `public/crystal/` altına kopyalanacak.  
+3. **Default rota**: Express’in `app.get("*")` kısmını `/crystal/index.html` olarak ayarlayarak, “ilk açılan sayfa” doğrudan Crystal Energy 3D uygulaması olsun.  
+
+Bu şekilde, Replit AI’ye verdiğiniz prompt’u izleyerek proje hem “toast.tsx” hatasından kurtulacak, hem de “Crystal Energy” sayfası doğrudan kökten yüklenir hale gelecek.
+```

@@ -8,11 +8,11 @@ export const Header = () => {
   const [location] = useLocation();
 
   const links = [
-    { href: "/", label: "Home" },
+    { href: "/home", label: "Home" },
     { href: "/encyclopedia", label: "Encyclopedia" },
     { href: "/tests", label: "Tests" },
     { href: "/customizer", label: "Customizer" },
-    { href: "/crystal", label: "Crystal Energy" },
+    { href: "/", label: "Crystal Energy" },
     { href: "/blog", label: "Blog" },
     { href: "/etsy-redirect", label: "Etsy" },
     { href: "/instagram-redirect", label: "Instagram" },

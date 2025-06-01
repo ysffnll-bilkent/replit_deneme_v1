@@ -24,7 +24,8 @@ import Profile from "@/pages/profile";
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={CrystalEnergyVisualization} />
+      <Route path="/home" component={Home} />
       <Route path="/encyclopedia" component={EncyclopediaList} />
       <Route path="/encyclopedia/:slug" component={EncyclopediaDetail} />
       <Route path="/tests" component={TestsList} />

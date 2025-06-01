@@ -45,10 +45,11 @@ export const Footer = () => {
           <div>
             <h4 className="font-medium text-lg mb-4">Quick Links</h4>
             <ul className="space-y-2 opacity-70">
-              <li><Link href="/" className="hover:text-lavender transition-colors">Home</Link></li>
+              <li><Link href="/home" className="hover:text-lavender transition-colors">Home</Link></li>
               <li><Link href="/encyclopedia" className="hover:text-lavender transition-colors">Encyclopedia</Link></li>
               <li><Link href="/tests" className="hover:text-lavender transition-colors">Spiritual Tests</Link></li>
               <li><Link href="/customizer" className="hover:text-lavender transition-colors">Crystal Jewelry</Link></li>
+              <li><Link href="/" className="hover:text-lavender transition-colors">Crystal Energy</Link></li>
               <li><Link href="/blog" className="hover:text-lavender transition-colors">Blog</Link></li>
             </ul>
           </div>
