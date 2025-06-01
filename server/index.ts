@@ -10,7 +10,11 @@ app.use(express.urlencoded({ extended: false }));
 // Serve the ThreeDModelViewer application at /crystal
 app.use("/crystal", express.static(path.join(process.cwd(), "public/crystal")));
 
-// Handle SPA fallback for /crystal routes
+// REMOVED: This route was incorrectly intercepting all /crystal/* requests and serving index.html
+// app.get("/crystal/*", (req, res) => {
+//   res.sendFile(path.join(process.cwd(), "public/crystal/index.html"));
+// });
+
 app.get("/crystal/*", (req, res) => {
   res.sendFile(path.join(process.cwd(), "public/crystal/index.html"));
 });
@@ -65,11 +69,10 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, "127.0.0.1", () => {
-    console.log(`Sunucu http://127.0.0.1:${PORT} adresinde çalışıyor`);
+  // Use process.env.PORT with a fallback, ensuring the port is a number.
+  // Listen on 0.0.0.0 for compatibility with platforms like Replit.
+  const port = parseInt(process.env.PORT || '3000', 10);
+  server.listen(port, () => {
+    console.log(`☁️  Sunucu http://localhost:${port} adresinde çalışıyor`);
   });
 })();
