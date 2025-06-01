@@ -1,3 +1,4 @@
+import React from "react";
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { motion } from "framer-motion";
@@ -49,12 +50,12 @@ export default function Customizer() {
   return (
     <>
       <Helmet>
-        <title>Custom Crystal Jewelry Designer | Crystal Essence</title>
+        <title>Custom Crystal Jewelry Designer | Mine Jewellery Art</title>
         <meta 
           name="description" 
           content="Design your own personalized crystal jewelry piece with our interactive customizer. Choose your crystal, setting, and style."
         />
-        <meta property="og:title" content="Custom Crystal Jewelry Designer | Crystal Essence" />
+        <meta property="og:title" content="Custom Crystal Jewelry Designer | Mine Jewellery Art" />
         <meta property="og:description" content="Design your own personalized crystal jewelry with our interactive customizer." />
         <meta property="og:type" content="website" />
       </Helmet>

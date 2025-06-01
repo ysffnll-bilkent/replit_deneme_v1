@@ -10,6 +10,11 @@ app.use(express.urlencoded({ extended: false }));
 // Serve the ThreeDModelViewer application at /crystal
 app.use("/crystal", express.static(path.join(process.cwd(), "public/crystal")));
 
+// Handle /crystal route specifically to serve the index.html
+app.get("/crystal", (req, res) => {
+  res.sendFile(path.join(process.cwd(), "public/crystal/index.html"));
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
