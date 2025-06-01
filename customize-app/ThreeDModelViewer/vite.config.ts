@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export default defineConfig({
+  base: "/crystal/",  // Critical: Set base path for proper asset loading
   plugins: [
     react(),
     runtimeErrorOverlay(),
