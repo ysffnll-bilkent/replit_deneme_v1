@@ -1,0 +1,56 @@
+Projede tüm `.tsx` ve `.jsx` dosyalarını baştan sonuna tarayıp, `import * as React from "react"` şeklindeki tüm “namespace import” ifadelerini standart React ön eki (preamble) algılanacak şekilde değiştirmesini istiyorum. Replit AI bu değişikliği yaparken aşağıdaki adımları kesinlikle uygulamalı:
+
+1. **Kapsamlı Dosya Taraması:**
+
+   * Projedeki tüm `src/` klasörü altındaki dosyaları (ve gerekiyorsa `customize-app/ThreeDModelViewer/src/` altını da) baştan sona tarayıp, React importlarını kontrol et.
+   * Hem `.tsx` hem de `.jsx` uzantılı dosyaları gözden geçir.
+
+2. **Import İfadelerinin Düzeltilmesi:**
+
+   * Dosya başında “`import * as React from "react"`” veya “`import * as React from 'react'`” geçen her satırı “`import React from "react";`” (veya tırnak stiline proje geneline uygun olarak `'react'`) olarak güncelle.
+   * Eğer dosya başında `import * as React` varsa, kesinlikle kaldırıp yerine `import React from "react";` yazılmalı.
+   * Hiçbir `.tsx` veya `.jsx` dosyasında “namespace import” kalmamalı; tamamı “default import” formatında olmalı.
+
+3. **Preamble Algılaması İçin Boşluk/Kodlama Kontrolü:**
+
+   * Dosyanın en tepesinde, ilk satırın neden olursa olsun bir BOM (Byte Order Mark) veya görünmez karakter içermediğinden emin ol. Tüm dosyaları “UTF-8 (BOM’suz)” olarak yeniden kaydet.
+   * Eğer dosyada “import React…” öncesinde yorum satırı veya pragma (`// @jsxImportSource react`) gerekiyorsa, bir pragma ekle. Fakat mümkünse ilk satır mutlaka `import React from "react";` şeklinde başlamalı.
+   * Replit’te dosya kodlamalarının doğru olduğu görülene kadar her dosyayı `UTF-8` olarak ayarla.
+
+4. **customize-app Altındaki Proje İçin Aynı İşlemleri Yap:**
+
+   * `customize-app/ThreeDModelViewer/src/` dizinindeki tüm React bileşen dosyalarını da aynı şekilde tarayıp, “import \* as React” kullanımlarını “import React from 'react';” olarak düzelt.
+   * Eğer orada da “toast.tsx” benzeri bileşenler varsa, hemen hepsi için preamble’i doğru konumlandır.
+
+5. **Bileşen ve Config Kontrolleri:**
+
+   * Vite konfigürasyon dosyasında (`vite.config.ts` veya `vite.config.js`) `@vitejs/plugin-react` eklentisinin yüklü ve en güncel versiyon olduğundan emin ol. Gerekirse `package.json` içindeki sürümü yükselt.
+   * Replit ortamında otomatik olarak gelen `.eslintrc` veya `.prettierrc` gibi kuralların “import style” kısıtlarını (namespace import zorlamalarını) devre dışı bırak veya güncelle.
+   * Eğer Replit editöründe “Format on Save” aktifse, devre dışı bırakıp dosyaları bir kez yeniden kaydet.
+
+6. **Dev ve Build Komutlarını Kontrol Et:**
+
+   * Projeyi `npm install` ve `npm run dev` komutlarıyla çalıştır. Geliştirme sunucusu başladıktan sonra **tarayıcı konsolunda hiç “@vitejs/plugin-react can’t detect preamble”**, “JSX” veya “React preamble” hatası çıkmamalı.
+   * `customize-app/ThreeDModelViewer` alt projede `npm install && npm run build` komutlarını çalıştırıp, `build` dizininden (veya `dist`) çıkan üretimi `public/crystal/` altına otomatik kopyaladığından emin olmalı.
+   * Build sonrası ana uygulamayı (`npm run dev` veya Replit’in sağladığı “Run” butonuyla) tekrar başlat ve **tarayıcı konsolunda kesinlikle hiç hata veya uyarı olmadan** Crystal sekmesini açabiliyor olmayı kontrol et.
+
+7. **“Integration Ready” Yerine Canlı Uygulamayı Gösterme:**
+
+   * `public/index.html` veya benzeri giriş sayfasındaki `<iframe src="/crystal" …>` alanı, boş bir “Coming Soon” mesajı değil, `customize-app/ThreeDModelViewer` projesinin build’ini doğru şekilde sunabilmeli.
+   * Eklenecek tüm statik dosyalar (`public/crystal/*`) gerçekten bu dizine kopyalanmış olmalı; böylece “3D Crystal Customizer” alanı altında kullanıcı customize-app’in React projesini görebilmeli.
+
+8. **Profesyonel Doğrulama:**
+
+   * Replit AI her bir bileşen dosyasını tek tek açıp, preamble hatasına sebep olabilecek hiçbir içerik kalmadığından emin olmalı.
+   * Kodun her satırına bakacak gibi titiz davran, “import \* as React” ifadesi kalmadığından, dosya kodlamaları doğrulandığından, Vite plugin ve diğer bağımlılıkların en güncel sürümde olduğundan, ESLint/Prettier ayarlarının birbiriyle çakışmadığından emin olmalı.
+   * Değişiklikleri yaptıktan sonra en az bir kere temiz build (`npm run build`) alıp, tarayıcıda hem `localhost:…` hem de `/crystal` rotalarında sıfır konsol hatası ve sıfır uyarı gördüğünü teyit et.
+
+9. **Çıktı ve Doğrulama Raporu:**
+
+   * Replit AI işlem bittikten sonra, “✔️ Tüm dosyalardaki namespace importlar düzeltildi.
+   * ✔️ Dosya kodlamaları UTF-8 BOM’suz yapıldı.
+   * ✔️ Vite config ve plugin sürümleri güncellendi.
+   * ✔️ customize-app build’i `public/crystal/` altına kopyalandı.
+   * ✔️ Geliştirme ve üretim modlarında konsolda hiçbir preamble veya JSX hatası kalmadı.” şeklinde kısa bir rapor sunmalı.
+
+Bu prompt’u Replit AI’ya vererek “Toast bileşeni ve benzeri tüm dosyalardaki `import * as React` kullanımını düzelt, preamble hataları tamamen kalksın, customize-app build çıktısını public/crystal altına otomatik taşısın” komutlarını en profesyonel seviyede yerine getirmesini sağlayabilirsin.
