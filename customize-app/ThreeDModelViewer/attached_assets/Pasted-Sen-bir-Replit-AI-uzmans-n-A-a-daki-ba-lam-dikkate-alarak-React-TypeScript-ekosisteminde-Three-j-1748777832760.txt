@@ -1,0 +1,381 @@
+Sen bir Replit AI uzmansın. Aşağıdaki bağlamı dikkate alarak, React+TypeScript ekosisteminde Three.js + React Three Fiber ve Cannon.js kullanarak gerçekçi bir dinamik ip simülasyonu oluşturacak kodu adım adım yaz:
+
+**Proje Türü:** 3D fizik tabanlı ip simülasyonu
+**Tech Stack:** React + TypeScript, Three.js, React Three Fiber, @react-three/cannon, @react-three/drei, three/examples/jsm/controls/DragControls, React DND, Radix UI + Tailwind CSS
+
+1. **Proje Hazırlığı ve Paket Kurulumu**
+
+   * Vite veya Create React App ile React+TypeScript projesi oluştur.
+   * `npm install three @react-three/fiber @react-three/drei @react-three/cannon cannon-es react-dnd react-dnd-html5-backend radix-ui tailwindcss postcss autoprefixer three/examples/jsm/controls/DragControls` komutuyla tüm gerekli kütüphaneleri kur.
+   * `tailwind.config.js` içerisine `content: ['src/**/*.{js,ts,tsx}']` ekleyerek Tailwind’i yapılandır.
+
+2. **App.tsx ve Sahne Kurulumu**
+
+   * `App.tsx` içinde `<Canvas>` bileşeni oluştur:
+
+     ```tsx
+     import { Canvas } from '@react-three/fiber';
+     import { OrbitControls, Stats } from '@react-three/drei';
+     import RopeScene from './components/three/RopeScene';
+
+     export default function App() {
+       return (
+         <div className="w-full h-screen">
+           <Canvas shadows camera={{ position: [0, 5, 10], fov: 50 }}>
+             <ambientLight intensity={0.4} />
+             <directionalLight
+               castShadow
+               position={[5, 10, 5]}
+               intensity={0.8}
+               shadow-mapSize-width={1024}
+               shadow-mapSize-height={1024}
+             />
+             <RopeScene />
+             <OrbitControls />
+             <Stats />
+           </Canvas>
+         </div>
+       );
+     }
+     ```
+
+3. **RopeScene.tsx (Temel Fizik Sağlayıcı)**
+
+   * `client/src/components/three/RopeScene.tsx` dosyası:
+
+     ```tsx
+     import React from 'react';
+     import { Physics } from '@react-three/cannon';
+     import Rope from './Rope';
+     import Hooks from './Hooks';
+     import Stones from './Stones';
+     import Ground from './Ground';
+
+     export default function RopeScene() {
+       return (
+         <Physics
+           gravity={[0, -9.81, 0]}
+           defaultContactMaterial={{ restitution: 0.3, friction: 0.5 }}
+         >
+           <Rope />
+           <Hooks />
+           <Stones />
+           <Ground />
+         </Physics>
+       );
+     }
+     ```
+
+4. **Hooks.tsx (İki Duvar Çivisi / Kanca Bileşeni)**
+
+   * `client/src/components/three/Hooks.tsx` dosyası:
+
+     ```tsx
+     import React, { useRef, useEffect } from 'react';
+     import { useSphere } from '@react-three/cannon';
+     import { useThree, useFrame } from '@react-three/fiber';
+     import { DragControls } from 'three/examples/jsm/controls/DragControls';
+
+     interface HookProps {
+       id: number;
+       initialPos: [number, number, number];
+       onMove: (idx: number, pos: [number, number, number]) => void;
+     }
+
+     function Hook({ id, initialPos, onMove }: HookProps) {
+       const meshRef = useRef<THREE.Mesh>(null);
+       const [refBody, api] = useSphere(() => ({
+         type: 'Static',
+         position: initialPos,
+         args: [0.1],
+       }));
+       const { camera, gl } = useThree();
+
+       useFrame(() => {
+         if (meshRef.current && !meshRef.current.userData.controls) {
+           const controls = new DragControls([meshRef.current], camera, gl.domElement);
+           controls.addEventListener('drag', (e: any) => {
+             api.position.set(e.object.position.x, e.object.position.y, e.object.position.z);
+             onMove(id, [e.object.position.x, e.object.position.y, e.object.position.z]);
+           });
+           controls.addEventListener('dblclick', (e: any) => {
+             const point = e.intersections[0]?.point;
+             if (point) {
+               api.position.set(point.x, point.y, point.z);
+               e.object.position.copy(point);
+               onMove(id, [point.x, point.y, point.z]);
+             }
+           });
+           meshRef.current.userData.controls = controls;
+         }
+       });
+
+       return (
+         <mesh ref={(m) => { refBody.current = m; meshRef.current = m; }} castShadow>
+           <sphereGeometry args={[0.1, 16, 16]} />
+           <meshStandardMaterial color="orange" />
+         </mesh>
+       );
+     }
+
+     export default function Hooks() {
+       const [hookPositions, setHookPositions] = React.useState<[
+         [number, number, number],
+         [number, number, number]
+       ]>([
+         [-1, 3, 0],
+         [1, 3, 0],
+       ]);
+
+       const moveHook = (idx: number, pos: [number, number, number]) => {
+         setHookPositions((prev) => {
+           const copy: any = [...prev];
+           copy[idx] = pos;
+           return [copy[0], copy[1]];
+         });
+       };
+
+       return (
+         <>
+           <Hook id={0} initialPos={hookPositions[0]} onMove={moveHook} />
+           <Hook id={1} initialPos={hookPositions[1]} onMove={moveHook} />
+         </>
+       );
+     }
+     ```
+
+5. **generateRopeSegments.ts (İp Segmentleri Pozisyon Hesaplama)**
+
+   * `client/src/utils/generateRopeSegments.ts` dosyası:
+
+     ```ts
+     import { Vector3 } from 'three';
+
+     export function generateRopeSegments(
+       start: [number, number, number],
+       end: [number, number, number],
+       segmentCount: number
+     ): { position: [number, number, number] }[] {
+       const segments: { position: [number, number, number] }[] = [];
+       const [sx, sy, sz] = start;
+       const [ex, ey, ez] = end;
+       for (let i = 0; i < segmentCount; i++) {
+         const t = i / (segmentCount - 1);
+         const x = sx + (ex - sx) * t;
+         const y = sy + (ey - sy) * t - Math.abs(Math.sin(Math.PI * t)) * 0.1;
+         const z = sz + (ez - sz) * t;
+         segments.push({ position: [x, y, z] });
+       }
+       return segments;
+     }
+     ```
+
+6. **Rope.tsx (Dinamik İp Bileşeni)**
+
+   * `client/src/components/three/Rope.tsx` dosyası:
+
+     ```tsx
+     import React, { useRef, useMemo, useEffect } from 'react';
+     import { useSphere, usePointToPointConstraint } from '@react-three/cannon';
+     import { Vector3 } from 'three';
+     import { generateRopeSegments } from '../../utils/generateRopeSegments';
+     import Hooks from './Hooks';
+
+     export default function Rope() {
+       const segmentCount = 20;
+       const hookA = useRef<[number, number, number]>([-1, 3, 0]);
+       const hookB = useRef<[number, number, number]>([1, 3, 0]);
+
+       // HookPositions güncellemelerini almak için state veya callback kullan
+       const [hookPositions, setHookPositions] = React.useState(hookA.current.concat(hookB.current) as any);
+
+       const ropeSegments = useMemo(
+         () => generateRopeSegments(
+           [hookPositions[0], hookPositions[1], hookPositions[2]],
+           [hookPositions[3], hookPositions[4], hookPositions[5]],
+           segmentCount
+         ),
+         [hookPositions]
+       );
+
+       const segmentBodies = useRef<Array<any>>(Array(segmentCount).fill(null));
+       const constraints: any[] = [];
+
+       // Segmentleri oluştur ve constraint ekle
+       ropeSegments.forEach((seg, idx) => {
+         const isEnd = idx === 0 || idx === segmentCount - 1;
+         const [ref, api] = useSphere(() => ({
+           mass: isEnd ? 0 : 0.1,
+           position: seg.position,
+           args: [0.05],
+           type: isEnd ? 'Static' : 'Dynamic',
+         }));
+         segmentBodies.current[idx] = api;
+
+         // Önceki segmentle constraint
+         if (idx > 0) {
+           constraints.push(
+             <usePointToPointConstraint
+               key={`c${idx}`}
+               bodyA={segmentBodies.current[idx - 1]}
+               bodyB={api}
+               pivotA={[0, 0, 0]}
+               pivotB={[0, 0, 0]}
+               maxForce={1e6}
+             />
+           );
+         }
+
+         // İlk ve son segmenti kanca pozisyonuna sabitle
+         if (idx === 0) {
+           constraints.push(
+             <usePointToPointConstraint
+               key="hookA-constraint"
+               bodyA={api}
+               pivotA={[0, 0, 0]}
+               bodyB={null}
+               pivotB={hookPositions as any}
+               maxForce={1e6}
+             />
+           );
+         }
+         if (idx === segmentCount - 1) {
+           constraints.push(
+             <usePointToPointConstraint
+               key="hookB-constraint"
+               bodyA={api}
+               pivotA={[0, 0, 0]}
+               bodyB={null}
+               pivotB={hookPositions.slice(3, 6) as any}
+               maxForce={1e6}
+             />
+           );
+         }
+       });
+
+       // HookPositions değiştiğinde güncellemek için efekt
+       const moveHook = (idx: number, pos: [number, number, number]) => {
+         setHookPositions((prev: any) => {
+           const copy = [...prev];
+           copy[idx * 3 + 0] = pos[0];
+           copy[idx * 3 + 1] = pos[1];
+           copy[idx * 3 + 2] = pos[2];
+           return copy;
+         });
+       };
+
+       return (
+         <>
+           <Hooks onMove={moveHook} />
+           {ropeSegments.map((seg, idx) => {
+             const isEnd = idx === 0 || idx === segmentCount - 1;
+             const [ref, api] = useSphere(() => ({
+               mass: isEnd ? 0 : 0.1,
+               position: seg.position,
+               args: [0.05],
+               type: isEnd ? 'Static' : 'Dynamic',
+             }));
+             segmentBodies.current[idx] = api;
+
+             return (
+               <mesh ref={ref} key={`seg${idx}`} castShadow>
+                 <sphereGeometry args={[0.05, 16, 16]} />
+                 <meshStandardMaterial color="#888" />
+               </mesh>
+             );
+           })}
+           {constraints.map((c) => c)}
+         </>
+       );
+     }
+     ```
+
+7. **Stones.tsx (Taş Objeleri Bileşeni)**
+
+   * `client/src/components/three/Stones.tsx` dosyası:
+
+     ```tsx
+     import React, { useRef } from 'react';
+     import { useSphere, usePointToPointConstraint } from '@react-three/cannon';
+
+     interface StoneProps {
+       position: [number, number, number];
+       attachTo: any;
+     }
+
+     export default function Stone({ position, attachTo }: StoneProps) {
+       const [ref, api] = useSphere(() => ({
+         mass: 0.2,
+         position,
+         args: [0.08],
+       }));
+       usePointToPointConstraint(attachTo, api, { pivotA: [0, 0, 0], pivotB: [0, 0, 0] });
+
+       return (
+         <mesh ref={ref} castShadow>
+           <icosahedronGeometry args={[0.08, 1]} />
+           <meshStandardMaterial color="teal" />
+         </mesh>
+       );
+     }
+     ```
+
+8. **Ground.tsx (Zemin / Ayakaltı)**
+
+   * `client/src/components/three/Ground.tsx` dosyası:
+
+     ```tsx
+     import React from 'react';
+     import { usePlane } from '@react-three/cannon';
+
+     export default function Ground() {
+       const [ref] = usePlane(() => ({
+         rotation: [-Math.PI / 2, 0, 0],
+         position: [0, 0, 0],
+         args: [10, 10],
+       }));
+       return (
+         <mesh ref={ref} receiveShadow>
+           <planeGeometry args={[10, 10]} />
+           <meshStandardMaterial color="lightgray" />
+         </mesh>
+       );
+     }
+     ```
+
+9. **React DND ile Taş Sürükle-Bırak**
+
+   * Basit bir taş paleti oluştur:
+
+     ```tsx
+     // UI/StonePalette.tsx
+     import React from 'react';
+     import { useDrag } from 'react-dnd';
+
+     export function StoneItem({ type }: { type: string }) {
+       const [, drag] = useDrag(() => ({ type: 'STONE', item: { type } }));
+       return (
+         <div ref={drag} className="p-2 cursor-grab hover:bg-gray-200">
+           <img src={`/stone1.glb`} className="w-12 h-12 object-cover" />
+           <p className="text-sm">{type}</p>
+         </div>
+       );
+     }
+     ```
+   * Drop işlemi: `RopeScene` içinde veya `Rope` bileşeninde `useDrop` kullanarak, drop noktasını `useThree()` ve `raycaster` ile hesaplayıp en yakın segmentin referansını bul, sonra `Stone` bileşeni render et.
+
+10. **Optimizasyon ve Test**
+
+* Segment sayısını azaltarak veya `InstancedMesh` kullanarak FPS’yi kontrol et.
+* Constraint ayarlarında `maxForce`, `damping`, `stiffness` parametrelerini deneyerek ipin stabilitesini ayarla.
+* Kancaları hareket ettirirken `api.position.set()` ve `api.velocity.set(0,0,0)` ile düzgün bir taşıma sağla.
+
+11. **Özet ve Son Kontroller**
+
+* Proje açıldığında doğrudan `DynamicRope` (yukarıdaki `RopeScene` içinde) render edilmeli.
+* İki kanca (Hook) fareyle sürüklenebilmeli ve çift tıklamayla anında yeni koordinata gidebilmeli.
+* İp segmentleri kancalar arasında hafif sarkmalı, her segment birbirine `PointToPointConstraint` ile bağlanmış olmalı.
+* Taş paletinden sürüklenen bir taş, ipin üzerine bırakıldığında en yakın segmente `PointToPointConstraint` ile bağlanmalı.
+* Tüm fizik simülasyonu ve görsel render kararlı çalışmalı; konsolda hata olmamalı, FPS ≥ 30.
+
+Yukarıdaki gereksinimleri ve adımları izleyerek, basitleştirilmiş ancak gerçekçi bir dinamik ip simülasyonu oluşturacak tam bir React+TypeScript+R3F+Cannon.js yapılandırması oluştur.

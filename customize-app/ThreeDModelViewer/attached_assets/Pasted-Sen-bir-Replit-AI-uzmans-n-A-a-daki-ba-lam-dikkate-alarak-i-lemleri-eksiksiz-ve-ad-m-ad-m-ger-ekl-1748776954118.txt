@@ -1,0 +1,273 @@
+Sen bir Replit AI uzmansın. Aşağıdaki bağlamı dikkate alarak işlemleri eksiksiz ve adım adım gerçekleştir:
+
+**Proje Bağlamı:**
+
+* **Proje Türü:** 3D fizik tabanlı ip/çember simülasyonu uygulaması.
+* **Tech Stack:** React + TypeScript + Three.js, React Three Fiber, Cannon.js (fizik), @react-three/drei (DragControls), React DND (taş sürükle-bırak), Radix UI + Tailwind CSS (UI).
+* **Dosya Yapısı (Örnek):**
+
+  ```
+  client/
+    src/
+      components/
+        three/
+          DynamicRope.tsx       // (Yeniden oluşturulacak) Dinamik ip ve kanca bileşeni
+          Hook.tsx              // (Yeni) Duvar çivisi (hook) bileşeni
+          RopeSegment.tsx       // (Gerekirse) İp segmenti bileşeni
+          StoneMesh.tsx         // Taş modeli bileşeni (drag-drop ile çalışacak)
+      utils/
+        generateRopeSegments.ts  // (Yeni) İp segment pozisyonlarını hesaplayacak yardımcı fonksiyon
+  attached_assets/
+    models/
+      hook.glb                  // Duvar çivisi modeli
+      stone1.glb                // Taş modeli (önceden mevcut)
+  ```
+* **Genel İş Akışı:**
+
+  1. Sahneye iki adet “duvar çivisi” (Hook) yerleştirilecek. Bu çivileri kullanıcı ekranda sürükleyebilecek.
+  2. Çiviler arasına fizik tabanlı, uçları birbirine bağlı (loop değil, uç uca sabit) bir “rope” (ip) kuracak. İpin esneme miktarı çok az olacak, yerçekimi etkisiyle hafif sarkacak fakat gayet stabil duracak.
+  3. İpi oluşturan segmentler (küçük silindir veya küreler) Cannon.js ile birbirine DistanceConstraint veya BoltConstraint kullanarak bağlanacak ve toplam uzunluğu, iki kanca arasındaki mesafeyi kaplayacak.
+  4. İki “Hook” objesinin konumlarına bağlı kalarak ipin gerilimini (stiffness) yüksek tutan fizik ayarları yapılacak (örneğin `stiffness: 1000, damping: 0.01`).
+  5. “Hook” bileşenleri 3B sahnede görünecek ve @react-three/drei’nin `DragControls` kullanılarak fareyle sürüklenebilir olacak. Konumları değiştikçe ipin segmentleri otomatik güncellenecek.
+  6. Sahneye yerleştirilen taşlar (StoneMesh) hala drag-drop işleviyle ip üzerine bırakılabilecek. Taş, bırakıldığı noktaya en yakın rope segmenti referans alınarak ipin üstüne yerleşecek ve hiçbir taş segmentlerle iç içe geçmeyecek.
+  7. Tüm bu işlemler sırasında sahne performansı korunacak; en fazla 30 segment + 2 kanca + 10 taş eklendiğinde FPS ≥ 30 olacak.
+
+**Yapılacaklar Listesi:**
+
+1. **Hook.tsx Bileşenini Oluştur:**
+
+   * **Dosya:** `client/src/components/three/Hook.tsx`
+   * **İstekler:**
+
+     1. `/attached_assets/models/hook.glb` modelini `useGLTF` ile yükleyip bir `<mesh>` içinde sar.
+     2. Modelin pivot noktasını tabana göre hizala (uç kısmı yukarı baktığı için arka plan düzlemsel).
+     3. `DragControls` kullanarak Hook’u sürüklenebilir hale getir. Örnek:
+
+        ```tsx
+        import React, { useRef, useEffect } from 'react';
+        import { useGLTF, DragControls } from '@react-three/drei';
+        import { useThree } from '@react-three/fiber';
+
+        const Hook: React.FC<{ position: [number, number, number]; onDrag: (pos: [number, number, number]) => void }> = ({ position, onDrag }) => {
+          const ref = useRef<THREE.Mesh>(null);
+          const { scene, nodes, materials } = useGLTF('/attached_assets/models/hook.glb');
+          const { camera, gl, scene: threeScene } = useThree();
+
+          useEffect(() => {
+            if (ref.current) {
+              const controls = new DragControls([ref.current], camera, gl.domElement);
+              controls.addEventListener('drag', (e) => {
+                const x = ref.current!.position.x;
+                const y = ref.current!.position.y;
+                const z = ref.current!.position.z;
+                onDrag([x, y, z]);
+              });
+              return () => {
+                controls.dispose();
+              };
+            }
+          }, [camera, gl.domElement, onDrag]);
+
+          return (
+            <primitive
+              object={scene}
+              ref={ref}
+              position={position}
+              scale={[0.2, 0.2, 0.2]}
+            />
+          );
+        };
+
+        export default Hook;
+        ```
+     4. Hook’un `position` prop’u dışarıdan verilecek ve her sürüklemede `onDrag` callback’i çağrılarak DynamicRope bileşenine yeni pozisyon bildirilecek.
+
+2. **generateRopeSegments.ts Yardımcı Fonksiyonunu Oluştur:**
+
+   * **Dosya:** `client/src/utils/generateRopeSegments.ts`
+   * **İstekler:**
+
+     1. `function generateRopeSegments(start: [number, number, number], end: [number, number, number], segmentCount: number): { position: [number, number, number] }[]` imzasını kullan.
+     2. `start` ve `end` noktaları arasındaki düz çizgiyi segmentCount eşit parçaya bölerek her segmentin dünya koordinatını hesapla.
+
+        * Örnek kod:
+
+          ```ts
+          export function generateRopeSegments(
+            start: [number, number, number],
+            end: [number, number, number],
+            segmentCount: number
+          ): { position: [number, number, number] }[] {
+            const segments: { position: [number, number, number] }[] = [];
+            const [sx, sy, sz] = start;
+            const [ex, ey, ez] = end;
+            for (let i = 0; i <= segmentCount; i++) {
+              const t = i / segmentCount;
+              const x = sx + (ex - sx) * t;
+              const y = sy + (ey - sy) * t - Math.abs(Math.sin(Math.PI * t)) * 0.1; // Çok az sarkma için sin eğrisi ekle
+              const z = sz + (ez - sz) * t;
+              segments.push({ position: [x, y, z] });
+            }
+            return segments;
+          }
+          ```
+     3. Böylece segmentCount=20 gibi ayarlandığında iki Hook arasına hafif sarkmış bir çizgi elde edilir.
+     4. Bu fonksiyon, DynamicRope.tsx içinde her iki Hook pozisyonu güncellendiğinde çağrılacak ve güncel segment pozisyonlarını döndürecek.
+
+3. **DynamicRope.tsx Bileşenini Sıfırdan Yaz:**
+
+   * **Dosya:** `client/src/components/three/DynamicRope.tsx`
+
+   * **İstekler:**
+
+     1. İki adet Hook bileşeni render et. Başlangıç konumları:
+
+        ```ts
+        const [hookA, setHookA] = useState<[number, number, number]>([-1, 1, 0]);
+        const [hookB, setHookB] = useState<[number, number, number]>([1, 1, 0]);
+        ```
+     2. `generateRopeSegments(hookA, hookB, 20)` çağrısıyla segment pozisyonlarını al ve `useMemo` içinde hesapla:
+
+        ```ts
+        const ropeSegments = useMemo(
+          () => generateRopeSegments(hookA, hookB, 20),
+          [hookA, hookB]
+        );
+        ```
+     3. Cannon.js kullanarak her bir segmenti fiziksel bir cisim (`useSphere` veya `useCapsule`) olarak oluştur:
+
+        ```tsx
+        ropeSegments.map((seg, idx) => {
+          const [refPhys] = useSphere(() => ({
+            mass: idx === 0 || idx === ropeSegments.length - 1 ? 0 : 0.1, // uçlar kancaya sabit
+            position: seg.position,
+            args: [0.05], // küre yarıçapı
+            fixedRotation: true,
+          }));
+          return <mesh ref={refPhys} key={idx}>
+            <sphereGeometry args={[0.05, 16, 16]} />
+            <meshStandardMaterial color="brown" />
+          </mesh>;
+        });
+        ```
+     4. Her iki uç segment için Cannon.js `PointToPointConstraint` oluştur. Örnek:
+
+        ```ts
+        useEffect(() => {
+          if (segmentRefs.current[0] && segmentRefs.current[ropeSegments.length - 1]) {
+            const bodyA = segmentBodies.current[0];
+            const bodyB = segmentBodies.current[ropeSegments.length - 1];
+            world.addConstraint(
+              new PointToPointConstraint(bodyA, new Vector3(0, 0, 0), bodyB, new Vector3(0, 0, 0), 0)
+            );
+          }
+        }, [ropeSegments]);
+        ```
+
+        * Uç segmentlerin kanca pozisyonuna sabit bağlanması için:
+
+          ```ts
+          useEffect(() => {
+            // hookA konumuna sabitle:
+            world.addConstraint(
+              new PointToPointConstraint(segmentBodies.current[0], new Vector3(0, 0, 0), null, new Vector3(hookA[0], hookA[1], hookA[2]), 0)
+            );
+            // hookB konumuna sabitle:
+            world.addConstraint(
+              new PointToPointConstraint(segmentBodies.current[ropeSegments.length - 1], new Vector3(0, 0, 0), null, new Vector3(hookB[0], hookB[1], hookB[2]), 0)
+            );
+          }, [hookA, hookB, ropeSegments]);
+          ```
+     5. **Segment Ref ve Body Yönetimi:**
+
+        * `const segmentRefs = useRef<Array<THREE.Mesh | null>>(Array(ropeSegments.length).fill(null));`
+        * `const segmentBodies = useRef<Array<Cannon.Body | null>>(Array(ropeSegments.length).fill(null));`
+        * Her segment oluşturulduğunda:
+
+          ```tsx
+          <mesh
+            ref={(el) => {
+              segmentRefs.current[idx] = el as THREE.Mesh;
+            }}
+          >
+            <sphereGeometry args={[0.05, 16, 16]} />
+            <meshStandardMaterial color="brown" />
+          </mesh>
+          ```
+
+          ve ayrıca `useSphere` dönüş değerini `segmentBodies.current[idx]` olarak sakla:
+
+          ```ts
+          const [refPhys, api] = useSphere(() => ({ /* ayarlar */ }));
+          segmentBodies.current[idx] = api as unknown as Cannon.Body;
+          ```
+     6. **Hook Bileşenleri ve Rope UI:**
+
+        * Canvas içinde:
+
+          ```tsx
+          <Canvas shadows camera={{ position: [0, 1, 3], fov: 50 }}>
+            <ambientLight intensity={0.5} />
+            <directionalLight position={[5, 5, 5]} intensity={1} />
+            <Suspense fallback={null}>
+              {/* Hook A */}
+              <Hook position={hookA} onDrag={(pos) => setHookA(pos)} />
+              {/* Hook B */}
+              <Hook position={hookB} onDrag={(pos) => setHookB(pos)} />
+
+              {/* Rope Segments */}
+              {ropeSegments.map((seg, idx) => (
+                <mesh
+                  key={idx}
+                  ref={(el) => {
+                    segmentRefs.current[idx] = el as THREE.Mesh;
+                  }}
+                >
+                  <sphereGeometry args={[0.05, 16, 16]} />
+                  <meshStandardMaterial color="brown" />
+                </mesh>
+              ))}
+            </Suspense>
+          </Canvas>
+          ```
+     7. **Taşları İp Üzerine Bırakma (Drag & Drop):**
+
+        * `StoneMesh.tsx` içinde React DND kullanarak taşları sürükleyip DynamicRopeCanvas içine `<Droppable>` şeklinde ayarla.
+        * `onDrop` olayı tetiklendiğinde Dünya koordinatını `raycaster` ile al, en yakın segment pozisyonunu bul (`ropeSegments[idx].position`), ve yeni bir `<StoneMesh>` bileşenini o pozisyona yerleştir. `occupied` bayrağıyla iç içe geçmeyi önle.
+     8. **Fizik Ayarları ve Optimizasyon:**
+
+        * `useSphere` kütlesini uç segmentler için `mass: 0` yaparak kancaya sabitlenmesini sağla, ortadaki segmentler için `mass: 0.1` olarak bırak.
+        * Uç segmentlerin sabit kalması için `api.position.set(hookA[0], hookA[1], hookA[2])` ve `api.velocity.set(0, 0, 0)` kullanarak her frame’de oraya sabitlemeyi de `useFrame` içinde yapabilirsin.
+        * İpin sarkma miktarını azaltmak için segmentler arasındaki mesafeyi küçük tut (örneğin segmentCount=20, segmentler arası mesafe < 0.1).
+        * Performans için gereksiz yeniden renderları `useMemo` ve `React.memo` ile önle.
+
+   * **Beklenen:**
+
+     * İki “duvar çivisi” sahnede görünsün, fareyle sürüklenebilsin.
+     * Çiviler arasına fizik tabanlı bir ip asılı dursun, çok az sarkma göstersin.
+     * İpin uçları çivilerin dünya koordinatlarına sabitlenmiş olsun; çiviler taşındıkça ip güncellensin.
+     * Sahneye eklenen taşlar, ip üzerine sürükle-bırak ile bırakıldığında en yakın segment konumuna yerleşsin, iç içe geçme olmasın.
+     * FPS ≥ 30 ve konsola hiçbir hata gelmesin.
+
+**Kod Tamamlandıktan Sonra:**
+
+* Yaptığın değişiklikleri adım adım özetle:
+
+  1. `Hook.tsx`: Duvar çivisi bileşenini oluşturup DragControls ile sürüklenebilir hale getirdin.
+  2. `generateRopeSegments.ts`: İki nokta arasında hafif sarkmış rope segment pozisyonlarını hesaplayan fonksiyonu yazdın.
+  3. `DynamicRope.tsx`:
+
+     * İki adet Hook kullanarak kanca pozisyonlarını yönettin.
+     * `useMemo` ile rope segment pozisyonlarını oluşturup her segmenti Cannon.js `useSphere` ile fiziklendirdin.
+     * Uç segmentleri Hook pozisyonlarına Constraint ile bağladın.
+     * Sahneye Canvas, ışık, ve segment render’ını ekledin.
+     * Taş sürükle-bırak mantığını ip üzerine adapt ettin.
+     * Performans optimizasyonları (`useMemo`, `useFrame`) ekledin.
+* Olası hata durumlarını listele:
+
+  * “Hook modeli yüklenemiyorsa doğru GLB yolu `/attached_assets/models/hook.glb` mu kontrol et.”
+  * “DragControls çalışmıyorsa `useEffect` bağımlılıklarını kontrol et.”
+  * “Rope segment Constraint eklenmediği için ipin uçları sabitlenmiyorsa `PointToPointConstraint` parametrelerini gözden geçir.”
+  * “Taş sürükle-bırak sırasında segment pozisyonu hatalıysa `raycaster` ve `ropeSegments` dizisini kontrol et.”
+
+Yukarıdaki talimatları dikkate alarak yeni “dinamik ip + iki kanca” sistemini oluştur ve projeyi hatasız çalışır hale getir.

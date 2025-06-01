@@ -1,0 +1,191 @@
+Sen bir Replit AI uzmansın. Aşağıdaki bağlamı dikkate alarak işlemleri eksiksiz ve adım adım gerçekleştir:
+
+**Proje Bağlamı:**
+
+* **Proje Türü:** 3D fizik tabanlı ip/çember simülasyonu uygulaması.
+* **Tech Stack:** React + TypeScript + Three.js, React Three Fiber, Cannon.js (fizik), Radix UI + Tailwind CSS (UI), React DND (drag-and-drop).
+* **Dosya Yapısı (Örnek):**
+
+  ```
+  client/
+    src/
+      components/
+        three/
+          BraceletCanvas.tsx        // Çember taban modeli bileşeni
+          RopeCanvas.tsx            // Düz ip taban modeli bileşeni
+          DynamicRopeCanvas.tsx     // (Yeni) Dinamik ip taban modeli bileşeni
+          StoneMesh.tsx             // Tek bir taş modelini render eden bileşen
+          EndModel.tsx              // (Yeni) Uç model bileşeni
+        sidebar/
+          SidebarControls.tsx       // Sol panel kontrolleri
+      utils/
+        generateCirclePositions.ts  // Çember pozisyonlarını hesaplayan fonksiyon
+        generateLinePositions.ts    // Düz ip pozisyonlarını hesaplayan fonksiyon
+        generateTriangleSupports.ts // (Yeni) Üçlü destek pozisyonlarını hesaplayan fonksiyon
+  attached_assets/
+    models/
+      stone1.glb
+      stone2.glb
+      endModel.glb
+  ```
+
+**Genel İş Akışı:**
+
+* Kullanıcı dinamik ip (DynamicRopeCanvas) desteklerinin ortasına taş sürükleyip bıraktığında:
+
+  1. Taş, bırakıldığı noktaya en yakın boş pozisyona (ip üzerindeki veya destek dibindeki uç modeli konumuna) yerleştirilecek.
+  2. Destekler: Ekranda bize önden baktığımızda kısa, dik duran üç sopa olacak; bu sopalar bir ikizkenar üçgenin köşelerinde yer alacak. Üçgenin tabanı ekranın altına paralel, tepe açısı \~120°.
+  3. Dinamik ip: Bu üç sopanın tam ortasından geçen, fiziksel olarak gerçekçi (neredeyse hiç esneme) bir ip olacak. İpin uçları yine desteklerin tabanına yakın (sopa tabanlarının tam ortasında) bulunacak. İp iki ucu birbirine bağlıymış gibi görünecek.
+  4. Uç modelleri: Her taban modelde (çember, düz ip, dinamik ip) uç modelleri (EndModel) destek/baz modelin ekran görünümünde en alttaki noktasının ortasına hizalanacak ve %30 taş boyutundan daha büyük olacak. Eğer o uç konumunda bir taş varsa, yeni uç modeli eklenirken o taşı sil.
+  5. Taş sürükle-bırak: Dinamik ip üzerindeki pozisyon dizisini (generateLinePositions) referans alarak, bırakılan noktaya en yakın boş pozisyonu hesapla ve taşın merkezini oraya yerleştir. Hiçbir taş model veya uç modeli iç içe geçmeyecek; boş pozisyonlar `occupied` bayrağıyla yönetilecek.
+  6. Tüm bu işlemler sırasında fizik simülasyonu (Cannon.js) ve render performansı (FPS ≥ 30) korunacak.
+
+**Yapılacaklar Listesi:**
+
+1. **Üç Destek Sopasının Pozisyonlarını Hesaplama**
+
+   * **Yeni Yardımcı Fonksiyon:**
+
+     * Dosya: `client/src/utils/generateTriangleSupports.ts`
+     * Fonksiyon İsmi: `generateTriangleSupports(baseWidth: number, height: number): { x: number; y: number; z: number; }[]`
+     * Açıklama:
+
+       1. `baseWidth`: Üçgenin taban genişliği (ekran X eksenine paralel).
+       2. `height`: Üçgenin tepe noktasının Y eksenindeki yüksekliği (ekran dikey eksende).
+       3. Fonksiyon, üçgenin üç köşe koordinatını döndüren bir dizi üretmeli:
+
+          * Sol alt köşe: `{ x: -baseWidth/2, y: 0, z: 0 }`
+          * Sağ alt köşe: `{ x: +baseWidth/2, y: 0, z: 0 }`
+          * Tepe köşe: `{ x: 0, y: height, z: 0 }`
+   * **Beklenen:**
+
+     * Ekrana önden baktığımızda üç destek sopası kısa ve dik duracak.
+     * Pozisyonlar, React Three Fiber dünyası birimlerine göre dönüştürülecek (örneğin, px→üç boyutlu birime).
+
+2. **DynamicRopeCanvas Bileşeni Oluşturma**
+
+   * **Dosya:** `client/src/components/three/DynamicRopeCanvas.tsx`
+
+   * **İstekler:**
+
+     1. **Destek Sopalarını Oluştur:**
+
+        * `generateTriangleSupports` fonksiyonunu kullanarak 3 destek konumu üret.
+        * Her destek için `mesh` olarak kısa bir silindir (`<mesh geometry={<cylinderGeometry args={[0.02, 0.02, 0.2, 8]} />} material={...} position={[x,y,z]} />`) kullan.
+     2. **Dinamik İpi Kur:**
+
+        * Cannon.js kullanarak `rope` şeklinde bir `Trimesh` veya `Constraint` oluştur.
+        * İpin uç noktaları tepe destek ve sol destek arasında dairevi bağlantı gibi birbirine bağlı gibi olmalı (ikinci copy için sağ destek kullanabilirsiniz).
+        * İpin esnemesi neredeyse sıfır olacak:
+
+          ```ts
+          const ropeOptions = {
+            mass: 0.1,
+            damping: 0.01,
+            stiffness: 1000,    // Yüksek sertlik
+            restLength: computedLength,
+          };
+          ```
+        * İpin uçlarını desteklerin tepe noktalarına bağlamak için `PointToPointConstraint` veya `DistanceConstraint` kullan.
+     3. **Taş Sürükle-Bırak Mantığını Ekle:**
+
+        * React DND `<Droppable>` alanını ipin ortasına hizalanmış bir görünmez kutu olarak ayarla.
+        * `onDrop` olayında, kullanıcı taşı bıraktığında:
+
+          * Bırakılan dünya koordinatını Three.js koordinat sistemine dönüştür (`useThree()`, `raycaster`).
+          * `generateLinePositions(ropeLength, totalSlots)` ile ip üzerindeki pozisyon listesini al (bu fonksiyon `length` ve `slot sayısı` kullanarak pozisyon dizisi üretir).
+          * Pozisyon dizisindeki her öğe `{ x, y, z, index }` şeklinde olsun ve bir `occupied` bayrağı taşısın.
+          * Bırakılan nokta ile her pozisyonun 3B mesafesini hesapla; en yakın `occupied === false` pozisyonu seç.
+          * Seçilen pozisyonu `occupied = true` yap, ve yeni `<StoneMesh>` bileşenini oraya yerleştir (`position={[x, y, z]}`) ve `rotation` olarak ipin doğrultusuna uyacak açı ayarla.
+     4. **Uç Model Ekleme ve Taş Silme Mantığı:**
+
+        * Dinamik ipin her iki ucuna (desteklerin taban noktasına yakın) birer `<EndModel>` bileşeni ekle.
+        * `EndModel.tsx` bileşeninde:
+
+          ```tsx
+          <mesh scale={[stoneScale * 1.3, stoneScale * 1.3, stoneScale * 1.3]} /* GLTF Model import ile */ />
+          ```
+        * Bırakma anında eğer uç modelin konumunda (`xEnd, yEnd, zEnd`) bir taş varsa, önceki `StoneMesh` bileşenini sil (`removeStoneAtPosition(xEnd, yEnd, zEnd)`).
+     5. **Fizik ve Performans Ayarları:**
+
+        * Cannon.js’de ipin node/segment sayısını minimum tut, mesela 20 segment.
+        * Her destek ve taş için `mass` ve `collisionFilterGroup`/`collisionMask` ayarlarını optimize et.
+        * React Three Fiber’ın `useFrame` içinde gereksiz yeniden renderları önlemek için `useMemo` veya `React.memo` kullan.
+
+   * **Beklenen:**
+
+     * Ekrana önden baktığımızda üç destek kısa sopalar dik ve isosceles üçgen oluşturacak. Dinamik ip, bu üç sopanın ortasına asılı ve iki ucu birbirine bağlıymış gibi görünecek.
+     * İp neredeyse hiç esnemeden asılı dursun.
+     * Taş sürükle-bırak işlemi başarılı: Bırakılan noktaya en yakın boş pozisyona taş yerleşsin; hiçbir taş veya uç modeli iç içe geçmesin.
+     * Uç modeller, ipin tabanında (destek tabanı) merkezde yer alsın ve taş üzerinde ise o taşı silsin.
+     * Performans: En fazla 30 taş eklendiğinde FPS ≥ 30 olmalı.
+     * Hiçbir konsol hatası olmamalı.
+
+3. **Uç Model Bileşeni (EndModel) Oluşturma**
+
+   * **Dosya:** `client/src/components/three/EndModel.tsx`
+   * **İstekler:**
+
+     1. GLTF veya GLB formatındaki `attached_assets/models/endModel.glb` dosyasını import et.
+     2. Taş boyutu (`stoneScale`) props olarak gelsin; `scale={[stoneScale * 1.3, stoneScale * 1.3, stoneScale * 1.3]}` ayarla.
+     3. `position={[x, y, z]}` props ile konum bilgisi alsın.
+     4. Basit bir fizik gölgesi ekle (opsiyonel).
+   * **Beklenen:**
+
+     * Uç modeller, her taban modelin en alttaki merkez noktasına hizalı ve taşlardan %30 daha büyük boyutta render edilsin.
+
+4. **Mevcut StoneMesh ve Pozisyon Yönetimini Güncelleme**
+
+   * **Dosya:** `client/src/components/three/StoneMesh.tsx` ve `client/src/utils/generateLinePositions.ts`
+   * **İstekler:**
+
+     1. `generateLinePositions(length, totalSlots)` fonksiyonunu, ipin segment uzunluğunu ve taşı koyabileceğin maksimum slot sayısını alarak pozisyon dizisi dönecek şekilde güncelle.
+     2. Her pozisyon nesnesi `{ x, y, z, index, occupied: boolean }` içerecek.
+     3. `StoneMesh` bileşeni:
+
+        * `props` olarak `position`, `rotation`, `id` alacak.
+        * Render esnasında kendi `Box3` çakışma kutusunu (`boundingBox`) hesaplayıp parent’ın `occupied` bayrağını güncelleme veya kontrol işini `DynamicRopeCanvas` içinde hallet.
+   * **Beklenen:**
+
+     * Pozisyon dizisi her zaman “oyalı bir liste” gibi güncel kalacak; çakışma kontrolünü `occupied` ile yapacağız.
+
+5. **Test ve Hata Durumları**
+
+   * **İstekler:**
+
+     1. Destek, ip ve uç modeli test et: Destekler ekranda kısa sopalar gibi görünmeli; ip, üç sopanın ortasında birbirine bağlı şekilde asılı kalmalı.
+     2. Taş sürükle-bırak testi:
+
+        * Taşı ipin ortasından bırak → en yakın boş pozisyona taş yerleşsin.
+        * Taşı uç modelin bulunduğu noktaya bırak → önceki taşı sil ve yeni uç modeli oraya ekle.
+        * İp veya destek içinde taş gömülmesin, `offset` eklenerek hafif yukarıda konumlansın.
+     3. Performans testi:
+
+        * Maksimum 30 taş + 3 uç modeli varken, üç destek + dinamik ip + taşlar bir arada çalışırken FPS ≥ 30 olmalı.
+        * Gerekirse `useMemo` veya `useFrame` optimizasyonları ekle.
+   * **Beklenen:**
+
+     * Hiçbir konsol hatası olmamalı.
+     * Tüm fizik simülasyonu ve render işlemleri kararlı çalışmalı.
+     * Kullanıcı taş ekleme/çıkarma yaparken hiçbir zaman taşlar veya uç modelleri çakışmayacak.
+
+---
+
+**Kod Tamamlandıktan Sonra:**
+
+* Yaptığın işlemleri adım adım şu formatta özetle:
+
+  1. `generateTriangleSupports.ts` fonksiyonu oluşturuldu, üç destek konumu hesaplandı.
+  2. `DynamicRopeCanvas.tsx` bileşeni oluşturuldu: Destekler, dinamik ip, taş sürükle-bırak ve uç modeli mantığı eklendi.
+  3. `EndModel.tsx` bileşeni oluşturuldu: Uç model GLB dosyası import edildi ve %30 ölçeklendirildi.
+  4. `generateLinePositions.ts` güncellendi: İp üzerindeki slot pozisyonları ve `occupied` bayrağı eklendi.
+  5. `StoneMesh.tsx` güncellendi: Çakışma kontrolü ve pozisyon yönetimi revize edildi.
+* Her adımda hangi dosyada ne değiştiğini ve neden yaptığını açıkla.
+* Olası hata durumlarını listele:
+
+  * “Destekler yanlış pozisyonlandı, üçgen açısı 120° olmadı”
+  * “İp çok fazla esniyor, ayarlanan `stiffness` çok düşük”
+  * “Taş uç model ile çakışıyor, `offset` eksik”
+  * “Performans düşüşü, `useFrame` içinde gereksiz state güncellemesi”
+
+Yukarıdaki talimatları dikkate alarak sadece belirtilen dosyalarda kod değişikliklerini yap, yeni dosya oluşturacaksan adını ve içeriğini açıkla. Herhangi bir ek dosya oluşturma veya mevcut yapıyı bozma; sadece ihtiyaç duyulan bileşenlerde düzenleme yap.

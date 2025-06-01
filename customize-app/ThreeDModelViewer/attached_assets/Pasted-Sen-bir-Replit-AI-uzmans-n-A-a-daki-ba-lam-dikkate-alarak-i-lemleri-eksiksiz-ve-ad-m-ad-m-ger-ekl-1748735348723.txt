@@ -1,0 +1,132 @@
+Sen bir Replit AI uzmansın. Aşağıdaki bağlamı dikkate alarak işlemleri eksiksiz ve adım adım gerçekleştir:
+
+**Proje Bağlamı:**
+
+* **Proje Türü:** 3D fizik tabanlı ip/çember simülasyonu uygulaması.
+* **Tech Stack:** React + TypeScript + Three.js, React Three Fiber, Cannon.js (fizik), Radix UI + Tailwind CSS (UI), React DND (drag-and-drop).
+* **Dosya Yapısı (Örnek):**
+
+  ```
+  client/
+    src/
+      components/
+        three/
+          BraceletCanvas.tsx        // Çember (halka) taban modeli bileşeni
+          RopeCanvas.tsx            // Düz ip taban modeli bileşeni
+          StoneMesh.tsx             // Tek bir taş modelini render eden bileşen
+        sidebar/
+          SidebarControls.tsx       // Sol panel kontrolleri
+      utils/
+        generateCirclePositions.ts  // Çember üzerindeki pozisyonları hesaplayan yardımcı fonksiyon
+        generateLinePositions.ts    // Düz ip üzerindeki pozisyonları hesaplayan yardımcı fonksiyon
+  attached_assets/
+    models/
+      stone1.glb
+      stone2.glb
+      ...
+  ```
+* **Genel İş Akışı:** Kullanıcı taşları (StoneMesh) sürükleyip bırakma işlemiyle seçili taban model (BraceletCanvas ya da RopeCanvas) üzerine bıraktığında:
+
+  1. Taş, bırakıldığı noktaya en yakın konuma (çember veya ip üzerindeki serbest pozisyondan) yerleştirilecek.
+  2. Hiçbir taş ve taban modeli (ip/halkadaki uç modeller de dahil) iç içe geçmeyecek veya çakışmayacak.
+  3. Taban modeli bir çemberse, taşların merkez noktaları çemberin oluşturduğu dairenin tam merkezine denk gelecek şekilde konumlanacak; sanki taşların ortasından geçen bir ipin üzerine geçirilmiş gibi görünecekler.
+  4. Düz ip modeli için taşlar, ip doğrultusunda yan yana dizilecek; her taş bir sonrakine en yakın boş noktaya yerleşecek (taşlar arasında çakışma olmayacak).
+  5. Tüm bu işlem sırasında fizik simülasyonu (Cannon.js) ve render performansı (%30 FPS \~) korunacak.
+
+**Yapılacaklar Listesi:**
+
+1. **Drag-and-Drop İşlemini Yakalayıp Pozisyon Hesaplama**
+
+   * Hangi Dosya:
+
+     * `client/src/components/three/BraceletCanvas.tsx`
+     * `client/src/components/three/RopeCanvas.tsx`
+   * İstek:
+
+     1. React DND kullanılarak sürüklenen taşın `onDrop` olayı yakalansın.
+     2. `onDrop` içinde, bırakılan dünya koordinatını alın (`event.clientX`, `event.clientY` → Three.js koordinatına dönüştür).
+     3. Taban modelin (çember veya ip) üzerinde oluşturulmuş pozisyon dizilerini kullanarak (`generateCirclePositions.ts` veya `generateLinePositions.ts`), bırakılan noktaya en yakın boş pozisyonu hesapla.
+     4. Hesaplanan bu pozisyona yeni bir `StoneMesh` örneği ekle; dizi referansında işaretle ki sonraki taşlar bu pozisyonu kullanmasın.
+   * Beklenen:
+
+     * Taş, bırakılan noktaya mümkün olduğunca yakın konumda, ancak tam olarak boş bir pozisyona yerleşsin.
+     * Pozisyon hesaplamasında hiçbir çakışma oluşmasın.
+     * Kod içerisinde, `isPositionOccupied(index)` veya benzeri bir yardımcı kontrollü kullanarak çakışma önlensin.
+
+2. **Çakışmayı Kesin Olarak Önleme**
+
+   * Hangi Dosya:
+
+     * `client/src/components/three/generateCirclePositions.ts`
+     * `client/src/components/three/generateLinePositions.ts`
+   * İstek:
+
+     1. Pozisyon dizilerini üretirken (örneğin `n` adet olası pozisyon), her pozisyonun bir `occupied` (boolean) alanı bulunsun.
+     2. Yeni bir taş eklenmeden önce, `occupied === false` olan en yakın indeksi seç; ardından bu indeksi `occupied = true` olarak işaretle.
+     3. Taş kaldırıldığında (`onRemove` olayı), ilgili indeksi tekrar `occupied = false` yap.
+   * Beklenen:
+
+     * Hiçbir zaman aynı pozisyona iki taş yerleştirilemesin.
+     * Pozisyon dizisi tam bir sıra halinde, boş ve dolu pozisyonlar net tanımlı olsun.
+
+3. **3D Model Merkezlerini Taban Modelin “İçi Boş” Kanalına Hizalama**
+
+   * Hangi Dosya:
+
+     * `client/src/components/three/StoneMesh.tsx`
+     * `client/src/components/three/BraceletCanvas.tsx`
+     * `client/src/components/three/RopeCanvas.tsx`
+   * İstek:
+
+     1. Her taş modelinin merkez noktasının `0,0,0` (locale göre) olduğunu, çember için `radius` kadar uzaklıkta, düz ip için de ipin üzerindeki `y` veya `z` ekseni boyunca hizalanması gerektiğini belirt.
+     2. Örneğin çemberde:
+
+        * `const positions = generateCirclePositions(radius, stoneCount);`
+        * Her `position` objesi `{ x, y, z, angle }` içersin; `StoneMesh`’i bu konumda yerleştirirken, modelin pivot noktası tam ortada olacak şekilde `position={ [x, y, z] }` kullan.
+        * Taşın `rotation` değeri, çember doğrultusuna göre yatay kalacak (örn. `rotation.y = angle`).
+     3. Düz ipte:
+
+        * `const positions = generateLinePositions(length, stoneCount);`
+        * Her pozisyon `{ x, y, z }` içersin; taş merkezini bu noktalara set et.
+        * İplerdeki taşlar, ipi ortalayacak şekilde `y` veya `z` eksenine tam temas edecek (örneğin `y = 0` olarak sabitlenebilir, ip ekseni X doğrultusundaysa `y` ve `z` 0).
+   * Beklenen:
+
+     * Taşların merkezleri baz modeldeki kanalın tam ortasında yer alsın.
+     * Çember ve ip boyunca taşlar “delinmiş” gibi görünsün; hiçbir taş taban modelinin içine gömülmesin, sadece ortasından geçirilmiş gibi yerleşsin.
+
+4. **Yan Yana Dizilme ve Sıralama Kuralları**
+
+   * Hangi Dosya:
+
+     * `client/src/components/three/generateCirclePositions.ts`
+     * `client/src/components/three/generateLinePositions.ts`
+   * İstek:
+
+     1. Çember durumunda, `stoneCount` başlangıçta 0 iken, her yeni taş eklendiğinde gerçek zamanlı olarak `stoneCount += 1` olacak. Bu değere göre `generateCirclePositions` fonksiyonu, çember üzerinde eşit açı aralıklı `stoneCount` adet pozisyon üretsin.
+     2. Düz ip durumunda, `generateLinePositions` fonksiyonu, ip uzunluğunu (`length`) taş boyutuna göre bölerek taşların merkezleri arasındaki mesafeyi otomatik ayarlasın.
+     3. Yeni bir taş eklendiğinde veya çıkarıldığında, tüm pozisyon dizileri yeniden hesaplanmasın; yalnızca yeni taş için en yakın boş pozisyon bulunup yerleştirilsin.
+   * Beklenen:
+
+     * Çember üzerindeki taşlar birbirine eşit mesafede kalsın.
+     * Düz ipteki taşlar, ip boyunca yan yana sıkı bir şekilde dizi oluştursun ve boşluk kalmasın.
+     * Taş eklenip çıkarıldığında mevcut taşlar yer değiştirmeden kalsın; yeni taş sadece boş pozisyona yerleşsin.
+
+5. **Test ve Hata Durumları**
+
+   * İstek:
+
+     1. Sürükle-bırak işlemi sırasında “taş modeli taban modelinin içine gömülüyor” hatası olmamalı. Eğer gömülme varsa, `position` hesaplamasında `offset` ekleyerek taban model yüzeyinin biraz üstünde konumlandır.
+     2. “Taşlar iç içe geçiyor” hatasını önlemek için fonksiyonlar çalıştıktan sonra Three.js’in `Box3` çakışma kontrolünü (`THREE.Box3().setFromObject(object)`) kullanarak her yeni taşın gerçekte dolu olmayan pozisyona yerleştiğini doğrula.
+     3. Performans testi: En fazla 30 taş eklendiğinde FPS en az 30 olmalı. Gerekirse `useMemo` veya `memo` kullanarak gereksiz yeniden render’ları önle.
+   * Beklenen:
+
+     * Hiçbir testte konsolda hata olmamalı.
+     * Tüm fizik ve render işlemleri kararlı çalışmalı.
+
+**Kod Tamamlandıktan Sonra:**
+
+* Adım adım ne yapıldığını kısa maddeler halinde özetle.
+* Her adımda hangi dosyada ne değiştiğini ve neden yaptığını belirt.
+* Olası hata senaryolarını listelerken, “Taş ler taban modeline saplanıyor” veya “Çemberdeki açı yanlış hesaplanıyor” gibi durumları açıklayıcı şekilde yaz.
+
+Yukarıdaki talimatları dikkate alarak sadece belirtilen dosyalarda kod değişikliklerini yap, yeni dosya yaratacaksan adını ve içeriğini açıkla. Herhangi bir ek dosya oluşturma veya mevcut yapıyı bozma; sadece ihtiyaç duyulan bileşenlerde düzenleme yap.
