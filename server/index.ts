@@ -7,13 +7,8 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Serve the ThreeDModelViewer application at /crystal-app
-app.use("/crystal-app", express.static(path.join(process.cwd(), "public/crystal")));
-
-// Serve the Crystal Energy app as default
-app.get("/", (req, res) => {
-  res.sendFile(path.join(process.cwd(), "public/crystal/index.html"));
-});
+// Serve the ThreeDModelViewer application at /crystal
+app.use("/crystal", express.static(path.join(process.cwd(), "public/crystal")));
 
 app.use((req, res, next) => {
   const start = Date.now();

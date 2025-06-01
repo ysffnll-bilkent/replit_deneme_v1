@@ -1,0 +1,122 @@
+Projedeki tüm React bileşen dosyalarını (hem ana uygulama hem de `customize-app/ThreeDModelViewer` içindekiler) baştan sona tarayıp, aşağıdaki adımları “kesinlikle” eksiksiz uygulayacak:
+
+1. **Dosya Kodlamasını Kontrol Et ve Düzenle**
+
+   * Tüm `.tsx` ve `.jsx` dosyalarını UTF-8 (BOM’suz) olarak yeniden kaydet.
+   * Dosyanın en başında görünmez karakter (BOM, gizli boşluk vb.) kalmadığından emin ol.
+
+2. **React Import Preamble’ini Düzelt**
+
+   * Hangi dosya olursa olsun, en tepeye mutlaka `import React from "react";` (veya proje genelinde `'react'` kullanıyorsa o tırnak stilini) yaz.
+   * Eğer bir dosyada hâlihazırda “`import * as React from "react"`” veya “`import * as React from 'react'`” geçiyorsa, tüm bunları “`import React from "react";`” olarak değiştir.
+   * “namespace import” (yani `* as React`) hiçbir `.tsx` ya da `.jsx` dosyada kalmamalı.
+
+3. **Dosya Başında Yorum veya Başka Kod Olmamasına Dikkat Et**
+
+   * Dosyanın ilk satırında yorum (`// …`) veya başka herhangi bir JavaScript/TypeScript kodu bulunmuyorsa, eğer varsa mutlaka comment taşıyıp React import’unun altına al. Çünkü Vite React plugin’i preamble’i yalnızca dosyanın ilk “import” satırından önce ekleyebiliyor.
+
+4. **Vite Konfigürasyonunu Gözden Geçir ve Güncelle**
+
+   * Projenin kökündeki `vite.config.js` (veya `.ts`) dosyasına giderek `@vitejs/plugin-react` eklentisinin en güncel sürümünü kullandığından emin ol.
+   * Eğer `vite.config.js` içinde şöyle bir satır varsa:
+
+     ```js
+     import react from "@vitejs/plugin-react";
+     ```
+
+     bunu şu yapıya benzet:
+
+     ```js
+     import react from "@vitejs/plugin-react";
+     export default {
+       plugins: [
+         react({
+           fastRefresh: true,
+           // gerekiyorsa jsxImportSource veya babel ayarlarını ekleyebilirsin
+         })
+       ],
+       // diğer ayarlar…
+     };
+     ```
+   * Eğer `customize-app/ThreeDModelViewer` içinde ayrı bir `vite.config.js/ts` varsa, aynısını orada da yap.
+
+5. **Toast Bileşenini ve Diğer Radix/UI Dosyalarını Düzenle**
+
+   * `toast.tsx` dosyasının tam başında kesinlikle şu satırlardan biri olmalı ve en tepede yer almalı:
+
+     ```tsx
+     import React from "react";
+     ```
+   * Ardından gelen satırlarda başka import’lar sıralanmalı. Örnek olarak:
+
+     ```tsx
+     import React from "react";
+     import * as ToastPrimitives from "@radix-ui/react-toast";
+     import { cva, type VariantProps } from "class-variance-authority";
+     import { X } from "lucide-react";
+     import { cn } from "@/lib/utils";
+     ```
+   * Eğer `toast.tsx` ya da benzer başka bileşenler hâlâ “@vitejs/plugin-react can’t detect preamble” hatası veriyorsa, dosyanın başında satır başına/sonuna boşluk veya BOM gibi gizli karakter kalmış demektir. Replit AI bunun için “ilk satırdaki boşlukları/kodlamayı sil, UTF-8 (BOM’suz) olarak yeniden kaydet” adımını tam uygulasın.
+
+6. **customize-app/ThreeDModelViewer İçindeki Aynı İşlemler**
+
+   * `customize-app/ThreeDModelViewer/src/` altındaki tüm `*.tsx` ve `*.jsx` dosyalarını da tarayıp, yukarıdaki “React importunu düzeltme” işlemini birebir uygula.
+   * Eğer orada da Radix UI veya başka UI kütüphaneleri varsa, her dosyanın en tepesine `import React from "react";` yazıldığından emin ol.
+
+7. **Otomatik Build ve Kopyalama Aşamaları**
+
+   * Replit AI’e, `customize-app/ThreeDModelViewer` içinde:
+
+     ```
+     npm install
+     npm run build
+     ```
+
+     komutlarını çalıştırmasını söyle.
+   * Build tamamlandıktan sonra `customize-app/ThreeDModelViewer/dist/` (veya Vite’in ürettiği “`build`”/“`dist`” klasörü) içindeki tüm dosyaları `public/crystal/` altına kopyalasın. Eğer `public/crystal/` yoksa otomatik oluşturulsun.
+   * Bu kopyalama işlemi tamamlanınca, ana sunucu (Express veya Vite dev server) yeniden başlatılsın.
+
+8. **Sunucu Ayarlarını Doğrula (Express Örneği)**
+
+   * Projenin kökünde eğer Express tabanlı bir sunucu varsa (örneğin `server/index.ts` veya `server-merged.js`), Replit AI’in şu statik yönlendirmeyi kesin olarak yapmasını sağla:
+
+     ```js
+     // Ana site statik dosyaları (index.html, css, js, vb.)
+     app.use(express.static(path.join(__dirname, "public")));
+
+     // /crystal rotası altına customize-app build çıktılarını sun
+     app.use("/crystal", express.static(path.join(__dirname, "public/crystal")));
+
+     // Diğer tüm rotalar SPA fallback olarak index.html’e gitsin
+     app.get("*", (req, res) => {
+       if (!req.path.startsWith("/crystal")) {
+         res.sendFile(path.join(__dirname, "public/index.html"));
+       }
+     });
+     ```
+   * Böylece `/crystal` yoluna gelen istekler doğrudan `public/crystal/index.html`’i (ve ona bağlı JS/CSS dosyalarını) yükleyecek.
+
+9. **“Integration Ready” Yerine Canlı Uygulamayı Yerleştir**
+
+   * `public/index.html` veya Express’in render ettiği ana sayfada, `<iframe src="/crystal" …>` yerine doğrudan `public/crystal` altındaki Vite build’in index’i gösterilsin. Eğer iframe kullanmak istiyorsan, `/crystal/index.html` yerine `/crystal` rotasını kullanabilir.
+   * Replit AI, sayfa açıldığında “Enhanced 3D Experience” alanı boş “Coming Soon” değil, `customize-app/ThreeDModelViewer` projesinin canlı çalışma halini gösterecek.
+
+10. **Son Kontroller ve Temiz Konsol**
+
+    * Tüm bu değişikliklerden sonra “npm run dev” veya “Replit Run” komutu ile projeyi ayağa kaldır.
+    * Tarayıcı konsolunu aç (DevTools → Console).
+    * Hem “ana sayfa” hem de “/crystal” sekmesinde HİÇBİR uyarı veya hata çıkmadığını (özellikle `@vitejs/plugin-react can’t detect preamble` hatasının tamamen kalktığını) doğrula.
+    * Replit AI’e, “Proje artık hem ana sayfada base uygulamayı hem de `/crystal` altında customize-app’ı sıfır hata ile gösteriyor” diye rapor etmesini iste.
+
+---
+
+**Özetle Replit AI’dan İstenenler:**
+
+* Projede yer alan *tüm* `.tsx` ve `.jsx` dosyalarını tarayıp, “`import * as React`” ifadelerini “`import React from 'react';`” haline getir.
+* Dosya kodlamalarını UTF-8 BOM’suz olarak yeniden ayarla.
+* Vite konfigürasyonunu (`vite.config.js/ts`) `@vitejs/plugin-react` eklentisiyle en güncel hâle getir.
+* `customize-app/ThreeDModelViewer` altındaki projeyi “`npm install && npm run build`” komutlarıyla derle, çıktılarını “`public/crystal/`” dizinine kopyala.
+* Express (veya Vite) sunucu ayarlarında `/crystal` rotasını `public/crystal` altına yönlendir, geri kalan tüm isteklere ana `index.html`’i döndür.
+* Tarayıcı konsolunda hiçbir uyarı/hata (özellikle React preamble hatası) kalmayan, hem ana uygulamayı hem de Crystal customize-app’ı sorunsuz gösteren bir sonuç oluştur.
+
+Bu prompt’u Replit AI paneline aynen yapıştırdığında—“Her dosyayı baştan tarayacak, preamble hatalarını kökünden çözecek, build çıktılarını kopyalayıp yönlendirmeyi ayarlayacak ve sıfır konsol hatası olan tam çalışan bir yapıyı” oluşturacaktır.
