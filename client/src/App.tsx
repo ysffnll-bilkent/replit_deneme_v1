@@ -18,6 +18,7 @@ import BlogList from "@/pages/blog/index";
 import BlogPost from "@/pages/blog/[slug]";
 import EtsyRedirect from "@/pages/etsy-redirect";
 import InstagramRedirect from "@/pages/instagram-redirect";
+import CrystalEnergyVisualization from "@/pages/crystal-energy-visualization";
 import Profile from "@/pages/profile";
 
 function Router() {

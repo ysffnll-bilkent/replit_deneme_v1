@@ -1,0 +1,114 @@
+We need to provide just the prompt without extra commentary. The prompt will instruct Replit to create package.json, server.js, and .replit or replit.nix. We should assume the other project is in customize-app/ThreeDModelViewer. We need to exclude any explanatory text before/after; just the prompt suitable for Replit AI.
+
+Thus output only the prompt text starting from description to end, with no meta commentary. Let's assemble that prompt.
+
+
+Bizim Repl’te halihazırda iki bağımsız React tabanlı uygulamamız var:
+
+1. **Ana Web Sitesi** (kök dizinde). `public/index.html` altındaki mevcut statik dosyaları kullanıyor.
+2. **Customize-App** (kaynak kodları `customize-app/ThreeDModelViewer` klasöründe). Kendi `package.json` ve “npm run build” betiği var.
+
+Amacımız:
+
+* Replit’in “Run” tuşuna bastığımızda, her iki uygulamayı bozmadan tek bir sunucuda aşağıdaki gibi yayınlamak:
+
+  * `/` rotası → Ana Web Sitesi (`public/` altındaki build çıktısı).
+  * `/crystal` rotası → Customize-App (önceden build edilmiş statik dosyalar `public/crystal/` altından).
+* İki proje de kendi kodları, bağımlılıkları ve build betikleriyle olduğu gibi kalsın. Hiçbir orijinal dosya değiştirilmesin.
+* Tüm entegrasyon, kök `package.json`, `server.js` ve Replit’in “Run” konfigürasyonu seviyesinde olsun.
+
+Replit AI’dan İstenenler:
+
+1. **Kök `package.json`** oluştur:
+
+   ```json
+   {
+     "name": "merged-replit-app",
+     "version": "1.0.0",
+     "private": true,
+     "scripts": {
+       "postinstall": "cd customize-app/ThreeDModelViewer && npm install && npm run build && cd ../../ && rm -rf public/crystal && mkdir -p public/crystal && cp -r customize-app/ThreeDModelViewer/build/* public/crystal/",
+       "start": "node server.js"
+     },
+     "dependencies": {
+       "express": "^4.18.2"
+     }
+   }
+   ```
+
+   * `postinstall` komutu: Replit’in her “npm install” aşamasında `customize-app/ThreeDModelViewer` içine girip `npm install && npm run build` yapacak, ardından `build/` içeriğini `public/crystal/` altına kopyalayacak.
+   * `start` komutu: Kök dizindeki `server.js` dosyasını çalıştırarak Express sunucusunu başlatacak.
+
+2. **Kök `server.js`** dosyası oluştur:
+
+   ```js
+   import express from "express";
+   import path from "path";
+   import { fileURLToPath } from "url";
+
+   const __filename = fileURLToPath(import.meta.url);
+   const __dirname = path.dirname(__filename);
+
+   const app = express();
+
+   // 1) Ana site statik dosyalarını sun
+   app.use(express.static(path.join(__dirname, "public")));
+
+   // 2) /crystal rotası altına customize-app build çıktılarını sun
+   app.use("/crystal", express.static(path.join(__dirname, "public/crystal")));
+
+   // 3) Diğer tüm istekleri ana site index.html’e yönlendir (SPA fallback)
+   app.get("*", (req, res) => {
+     if (!req.path.startsWith("/crystal")) {
+       res.sendFile(path.join(__dirname, "public/index.html"));
+     }
+   });
+
+   const PORT = process.env.PORT || 3000;
+   app.listen(PORT, () => {
+     console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor`);
+   });
+   ```
+
+3. **Replit Çalıştırma Konfigürasyonu**:
+
+   * `.replit` dosyası (veya `replit.nix`):
+
+     ```ini
+     run = "npm install && npm run start"
+     ```
+   * Veya `replit.nix` kullanıyorsa:
+
+     ```nix
+     { pkgs }: {
+       deps = [ pkgs.nodejs ];
+       run = "npm install && npm run start";
+     }
+     ```
+
+4. **Beklenen Klasör Yapısı**:
+
+   ```
+   / (Repl root)
+   ├── package.json
+   ├── server.js
+   ├── .replit          (veya replit.nix)
+   ├── public/
+   │   ├── index.html          ← Ana site statik build
+   │   ├── /* diğer ana site dosyaları */
+   │   └── crystal/
+   │       ├── index.html      ← customize-app build çıktısı
+   │       ├── static/         ← customize-app’in derlenen JS/CSS ve varlıklar
+   │       └── ...
+   └── customize-app/
+       └── ThreeDModelViewer/  ← Orijinal customize-app kaynak kodu
+           ├── package.json
+           ├── src/
+           ├── public/         ← (varsa customize-app’in kendi public dizini)
+           └── ...
+   ```
+
+Bu entegrasyonla:
+
+* `/` adresinde Ana Web Sitesi’ni,
+* `/crystal` adresinde Customize-App’i bozulmadan çalıştırabileceğiz.
