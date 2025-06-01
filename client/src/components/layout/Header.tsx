@@ -12,6 +12,7 @@ export const Header = () => {
     { href: "/encyclopedia", label: "Encyclopedia" },
     { href: "/tests", label: "Tests" },
     { href: "/customizer", label: "Customizer" },
+    { href: "/crystal", label: "Crystal Energy" },
     { href: "/blog", label: "Blog" },
     { href: "/etsy-redirect", label: "Etsy" },
     { href: "/instagram-redirect", label: "Instagram" },

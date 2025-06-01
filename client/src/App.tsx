@@ -35,6 +35,7 @@ function Router() {
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/etsy-redirect" component={EtsyRedirect} />
       <Route path="/instagram-redirect" component={InstagramRedirect} />
+      <Route path="/crystal" component={CrystalEnergyVisualization} />
       <Route path="/profile" component={Profile} />
       <Route component={NotFound} />
     </Switch>
