@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Gem } from "lucide-react";
+import { Gem, Instagram } from "lucide-react";
 
 export const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -12,30 +12,30 @@ export const Footer = () => {
           <div className="md:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
               <Gem className="text-lavender text-xl" />
-              <span className="font-serif text-lg font-semibold">Crystal Essence</span>
+              <span className="font-serif text-lg font-semibold">Mine Jewellery Art</span>
             </div>
             <p className="opacity-70 text-sm mb-6">
               Your source for spiritual growth, crystal wisdom, and personalized energy tools.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-white opacity-70 hover:opacity-100 transition-opacity">
+              <a 
+                href="https://www.instagram.com/ysffnll/" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white opacity-70 hover:opacity-100 transition-opacity"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" className="w-5 h-5 fill-current">
                   <path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z" />
                 </svg>
               </a>
-              <a href="#" className="text-white opacity-70 hover:opacity-100 transition-opacity">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-5 h-5 fill-current">
-                  <path d="M504 256C504 119 393 8 256 8S8 119 8 256c0 123.78 90.69 226.38 209.25 245V327.69h-63V256h63v-54.64c0-62.15 37-96.48 93.67-96.48 27.14 0 55.52 4.84 55.52 4.84v61h-31.28c-30.8 0-40.41 19.12-40.41 38.73V256h68.78l-11 71.69h-57.78V501C413.31 482.38 504 379.78 504 256z" />
-                </svg>
-              </a>
-              <a href="#" className="text-white opacity-70 hover:opacity-100 transition-opacity">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512" className="w-5 h-5 fill-current">
-                  <path d="M496 256c0 137-111 248-248 248-25.6 0-50.2-3.9-73.4-11.1 10.1-16.5 25.2-43.5 30.8-65 3-11.6 15.4-59 15.4-59 8.1 15.4 31.7 28.5 56.8 28.5 74.8 0 128.7-68.8 128.7-154.3 0-81.9-66.9-143.2-152.9-143.2-107 0-163.9 71.8-163.9 150.1 0 36.4 19.4 81.7 50.3 96.1 4.7 2.2 7.2 1.2 8.3-3.3.8-3.4 5-20.3 6.9-28.1.6-2.5.3-4.7-1.7-7.1-10.1-12.5-18.3-35.3-18.3-56.6 0-54.7 41.4-107.6 112-107.6 60.9 0 103.6 41.5 103.6 100.9 0 67.1-33.9 113.6-78 113.6-24.3 0-42.6-20.1-36.7-44.8 7-29.5 20.5-61.3 20.5-82.6 0-19-10.2-34.9-31.4-34.9-24.9 0-44.9 25.7-44.9 60.2 0 22 7.4 36.8 7.4 36.8s-24.5 103.8-29 123.2c-5 21.4-3 51.6-.9 71.2C65.4 450.9 0 361.1 0 256 0 119 111 8 248 8s248 111 248 248z" />
-                </svg>
-              </a>
-              <a href="#" className="text-white opacity-70 hover:opacity-100 transition-opacity">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" className="w-5 h-5 fill-current">
-                  <path d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z" />
+              <a 
+                href="https://www.etsy.com/shop/minejewelleryart" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white opacity-70 hover:opacity-100 transition-opacity"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" className="w-5 h-5 fill-current">
+                  <path d="M384 348c-1.75 10.75-13.75 110-15.5 132-117.879-4.299-219.895-4.743-368.5 0v-25.5c45.457-8.948 60.627-8.019 61-35.25 1.793-72.322 3.524-244.143 0-322-1.029-28.46-12.13-26.765-61-36v-25.5c73.886 2.358 255.933 8.551 362.999-3.75-3.5 38.25-7.75 126.5-7.75 126.5H332C320.947 115.665 313.241 68 277.25 68h-137c-10.25 0-10.75 3.5-10.75 9.75V241.5c58 .5 88.5-2.5 88.5-2.5 29.77-.951 27.56-8.502 40.75-65.251h25.75c-4.407 101.351-3.91 61.829-1.75 160.25H257c-9.155-40.086-9.065-61.045-39.501-61.5 0 0-21.5-2-88-2v139c0 26 14.25 38.25 44.25 38.25H263c63.636 0 66.564-24.996 98.751-99.75H384z"/>
                 </svg>
               </a>
             </div>
@@ -65,22 +65,37 @@ export const Footer = () => {
             </ul>
           </div>
           
-          {/* Legal */}
+          {/* Social & Links */}
           <div>
-            <h4 className="font-medium text-lg mb-4">Legal</h4>
+            <h4 className="font-medium text-lg mb-4">Connect With Us</h4>
             <ul className="space-y-2 opacity-70">
-              <li><a href="#" className="hover:text-lavender transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="hover:text-lavender transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="hover:text-lavender transition-colors">Shipping Policy</a></li>
-              <li><a href="#" className="hover:text-lavender transition-colors">Return Policy</a></li>
-              <li><a href="#" className="hover:text-lavender transition-colors">Disclaimer</a></li>
+              <li>
+                <a 
+                  href="https://www.etsy.com/shop/minejewelleryart" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center hover:text-lavender transition-colors"
+                >
+                  <span className="mr-2">Shop on Etsy</span>
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="https://www.instagram.com/ysffnll/" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center hover:text-lavender transition-colors"
+                >
+                  <span className="mr-2">Follow on Instagram</span>
+                </a>
+              </li>
             </ul>
           </div>
         </div>
         
         <div className="border-t border-white/10 mt-12 pt-6 flex flex-col md:flex-row justify-between items-center">
           <p className="text-sm opacity-60 mb-4 md:mb-0">
-            &copy; {currentYear} Crystal Essence. All rights reserved.
+            &copy; {currentYear} Mine Jewellery Art. All rights reserved.
           </p>
           <p className="text-sm opacity-60">
             Designed with love and positive energy
